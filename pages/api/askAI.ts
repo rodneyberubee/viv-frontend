@@ -1,4 +1,3 @@
-// pages/api/askViv.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -9,6 +8,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    console.log('📨 [Viv API] Incoming message:', userMessage);
+    console.log('🏠 [Viv API] Restaurant ID:', restaurantId);
+    console.log('🔑 [Viv API] Key loaded:', process.env.OPENAI_API_KEY ? '✅' : '❌');
+
     const systemPrompt = `
 You are Viv, a warm, helpful AI assistant for a restaurant called Molly's Cafe.
 You respond like a real person. You can answer questions, hold conversation, or take a reservation if the user provides details.
@@ -25,7 +28,7 @@ Current restaurant ID: ${restaurantId}
         Authorization: `Bearer ${process.env.OPENAI_API_KEY!}`
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-3.5-turbo', // 🔄 TEMP fallback to ensure response
         messages: [
           { role: 'system', content: systemPrompt },
           { role: userMessage.role, content: userMessage.content }
@@ -35,11 +38,17 @@ Current restaurant ID: ${restaurantId}
     });
 
     const data = await openaiResponse.json();
+
+    console.log('🧠 [Viv API] OpenAI response:', JSON.stringify(data, null, 2));
+
     const reply = data?.choices?.[0]?.message?.content || '[Viv is speechless 😶]';
 
     return res.status(200).json({ reply });
-  } catch (error) {
-    console.error('[askViv.ts error]', error);
-    return res.status(500).json({ error: 'Viv crashed trying to think. Try again soon.' });
+  } catch (error: any) {
+    console.error('[❌ askViv.ts error]', error?.message || error);
+    return res.status(500).json({
+      error: 'Viv crashed trying to think.',
+      detail: error?.message || JSON.stringify(error)
+    });
   }
 }
