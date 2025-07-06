@@ -1,117 +1,137 @@
-'use client';
+import { useState, useEffect, useRef } from 'react';
 
-import { useState } from 'react';
+type Message = {
+  sender: 'user' | 'viv';
+  content: string;
+};
 
-export default function ChatPage() {
-  const restaurantId = 'mollyscafe1'; // hardcoded for now
-
+const ChatPage = () => {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: `Hi! I'm Viv 👋 — your reservation assistant for Molly's Cafe. How can I help?`
-    }
-  ]);
   const [isLoading, setIsLoading] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  const handleSubmit = async () => {
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const sendMessage = async () => {
     if (!input.trim()) return;
 
-    const userMessage = { role: 'user', content: input };
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
+    const userMessage: Message = { sender: 'user', content: input };
+    const newMessages = [...messages, userMessage];
+
+    setMessages(newMessages);
     setInput('');
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/askViv', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userMessage,
-          restaurantId
-        })
+        body: JSON.stringify({ message: input }),
       });
 
-      const data = await res.json();
-      const reply = data.reply || '⚠️ Viv didn’t reply.';
+      const data = await response.json();
+      const vivMessage: Message = { sender: 'viv', content: data.reply || '...' };
 
-      setMessages([...updatedMessages, { role: 'assistant', content: reply }]);
-    } catch (err) {
-      console.error('Viv error:', err);
-      setMessages([
-        ...updatedMessages,
-        { role: 'assistant', content: '⚠️ Viv ran into an error. Try again shortly.' }
-      ]);
+      setMessages([...newMessages, vivMessage]);
+    } catch (error) {
+      console.error('[ERROR] Failed to get Viv response:', error);
+      const errorMessage: Message = { sender: 'viv', content: 'Sorry, something went wrong.' };
+      setMessages([...newMessages, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') sendMessage();
+  };
+
   return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif', maxWidth: 600, margin: '0 auto' }}>
-      <h1>Viv – Molly's Cafe</h1>
-      <div style={{
-        marginBottom: '1rem',
-        maxHeight: 400,
-        overflowY: 'auto',
-        border: '1px solid #ccc',
-        padding: 10,
-        borderRadius: 8
-      }}>
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            style={{
-              textAlign: msg.role === 'user' ? 'right' : 'left',
-              marginBottom: 8
-            }}
-          >
-            <span style={{
-              display: 'inline-block',
-              padding: '0.5rem 1rem',
-              borderRadius: 16,
-              background: msg.role === 'user' ? '#007aff' : '#eee',
-              color: msg.role === 'user' ? '#fff' : '#000'
-            }}>
-              {msg.content}
-            </span>
+    <div style={styles.container}>
+      <div style={styles.chatBox}>
+        {messages.map((msg, idx) => (
+          <div key={idx} style={msg.sender === 'user' ? styles.userBubble : styles.vivBubble}>
+            {msg.content}
           </div>
         ))}
+        <div ref={bottomRef} />
       </div>
-
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div style={styles.inputBar}>
         <input
           type="text"
           value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          style={{
-            flexGrow: 1,
-            padding: '0.75rem',
-            fontSize: '1rem',
-            border: '1px solid #ccc',
-            borderRadius: 8
-          }}
-          placeholder="Ask Viv anything..."
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Type your message..."
+          style={styles.input}
           disabled={isLoading}
         />
-        <button
-          onClick={handleSubmit}
-          disabled={isLoading}
-          style={{
-            padding: '0.75rem 1rem',
-            fontSize: '1rem',
-            background: '#007aff',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 8,
-            cursor: isLoading ? 'not-allowed' : 'pointer'
-          }}
-        >
-          {isLoading ? '...' : 'Send'}
+        <button onClick={sendMessage} style={styles.button} disabled={isLoading || !input.trim()}>
+          Send
         </button>
       </div>
     </div>
   );
-}
+};
+
+const styles: { [key: string]: React.CSSProperties } = {
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100vh',
+    fontFamily: 'sans-serif',
+    backgroundColor: '#f5f5f5',
+  },
+  chatBox: {
+    flex: 1,
+    padding: '1rem',
+    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+  },
+  userBubble: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#0084ff',
+    color: 'white',
+    padding: '0.75rem 1rem',
+    borderRadius: '1rem',
+    maxWidth: '80%',
+  },
+  vivBubble: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#e0e0e0',
+    color: '#333',
+    padding: '0.75rem 1rem',
+    borderRadius: '1rem',
+    maxWidth: '80%',
+  },
+  inputBar: {
+    display: 'flex',
+    padding: '1rem',
+    borderTop: '1px solid #ccc',
+    backgroundColor: '#fff',
+  },
+  input: {
+    flex: 1,
+    padding: '0.75rem',
+    fontSize: '1rem',
+    borderRadius: '0.5rem',
+    border: '1px solid #ccc',
+    marginRight: '0.5rem',
+  },
+  button: {
+    padding: '0.75rem 1rem',
+    fontSize: '1rem',
+    borderRadius: '0.5rem',
+    border: 'none',
+    backgroundColor: '#333',
+    color: 'white',
+    cursor: 'pointer',
+  },
+};
+
+export default ChatPage;
