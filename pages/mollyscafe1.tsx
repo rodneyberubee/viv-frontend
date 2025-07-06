@@ -16,34 +16,56 @@ const ChatPage = () => {
   }, [messages]);
 
   const sendMessage = async () => {
-    if (!input.trim()) return;
+  if (!input.trim()) return;
 
-    const userMessage: Message = { sender: 'user', content: input };
-    const newMessages = [...messages, userMessage];
+  const userMessage: Message = { sender: 'user', content: input };
+  const newMessages = [...messages, userMessage];
 
-    setMessages(newMessages);
-    setInput('');
-    setIsLoading(true);
+  setMessages(newMessages);
+  setInput('');
+  setIsLoading(true);
 
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: newMessages.map(msg => ({
+          role: msg.sender === 'user' ? 'user' : 'assistant',
+          content: msg.content,
+        })),
+      }),
+    });
+
+    const data = await response.json();
+    const vivResponse = data.message || data.reply || '...';
+
+    const vivMessage: Message = { sender: 'viv', content: vivResponse };
+    setMessages([...newMessages, vivMessage]);
+
+    // Attempt to parse Viv’s reply as JSON (middleware-eligible message)
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input }),
-      });
-
-      const data = await response.json();
-      const vivMessage: Message = { sender: 'viv', content: data.reply || '...' };
-
-      setMessages([...newMessages, vivMessage]);
-    } catch (error) {
-      console.error('[ERROR] Failed to get Viv response:', error);
-      const errorMessage: Message = { sender: 'viv', content: 'Sorry, something went wrong.' };
-      setMessages([...newMessages, errorMessage]);
-    } finally {
-      setIsLoading(false);
+      const structured = JSON.parse(vivResponse);
+      if (typeof structured === 'object' && structured !== null && structured.name && structured.date) {
+        console.log('[DEBUG] Detected structured Viv response, forwarding to middleware:', structured);
+        await fetch('/api/askViv/mollyscafe1', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userMessage: structured }),
+        });
+      }
+    } catch {
+      // If Viv didn't respond with JSON, skip middleware forwarding
     }
-  };
+
+  } catch (error) {
+    console.error('[ERROR] Failed to get Viv response:', error);
+    const errorMessage: Message = { sender: 'viv', content: 'Sorry, something went wrong.' };
+    setMessages([...newMessages, errorMessage]);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') sendMessage();
