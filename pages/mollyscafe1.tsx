@@ -35,22 +35,8 @@ export default function MollysCafe() {
         setMessages(prev => [...prev, { role: 'assistant', content: assistantReply }]);
       }
 
+      // ✅ Reservation was already created by Viv A — just confirm it to the guest
       if (aiData.type === 'reservation.complete' && aiData.parsed) {
-        console.log('[DEBUG] Forwarding structured reservation to middleware:', aiData.parsed);
-
-        const middlewareResponse = await fetch('https://api.vivaitable.com/api/askViv/mollyscafe1', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'reservation.complete',
-            parsed: aiData.parsed
-          })
-        });
-
-        const result = await middlewareResponse.json();
-        console.log('[DEBUG] Middleware (logic only) result:', result);
-
-        // Feed the result back into Viv A — ✅ FIXED: no JSON blob
         const summaryText = `Reservation complete: ${aiData.parsed.partySize} people under the name ${aiData.parsed.name} at ${aiData.parsed.timeSlot} on ${aiData.parsed.date}.`;
 
         const handoffMessages = [
@@ -65,8 +51,8 @@ export default function MollysCafe() {
         });
 
         const followupData = await followupResponse.json();
-        if (followupData.response || followupData.raw) {
-          const followup = followupData.response || followupData.raw;
+        const followup = followupData.response || followupData.raw;
+        if (followup) {
           setMessages(prev => [...prev, { role: 'assistant', content: followup }]);
         }
       }
