@@ -29,46 +29,52 @@ export default function MollysCafe() {
       setAiData(aiData);
 
       const assistantReply = aiData.response || aiData.raw || aiData.message || aiData.reply;
-      console.log('[Viv DEBUG] Assistant is replying with:', JSON.stringify(assistantReply));
+      const structuredType = aiData.type;
+      const structuredParsed = aiData.parsed;
 
-      if (typeof assistantReply === 'string' && assistantReply.trim() !== '') {
-        setMessages(prev => [...prev, { role: 'assistant', content: assistantReply }]);
-      }
-
-      if (aiData.type === 'reservation.complete' && aiData.parsed) {
-        console.log('[DEBUG] Forwarding structured reservation to middleware:', aiData.parsed);
-
-        const middlewareResponse = await fetch('https://api.vivaitable.com/api/askViv/mollyscafe1', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'reservation.complete',
-            parsed: aiData.parsed
-          })
-        });
-
-        const result = await middlewareResponse.json();
-        console.log('[DEBUG] Middleware (logic only) result:', result);
-
-        // Feed the result back into Viv A
-        const handoffMessages = [
-          { role: 'system', content: 'You just completed this reservation:' },
-          { role: 'system', content: JSON.stringify(result) },
-          { role: 'user', content: 'Can you confirm it for the guest in your own words?' }
-        ];
-
-        const followupResponse = await fetch('https://api.vivaitable.com/api/askViv/mollyscafe1', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: [...updatedMessages, ...handoffMessages] })
-        });
-
-        const followupData = await followupResponse.json();
-        if (followupData.response || followupData.raw) {
-          const followup = followupData.response || followupData.raw;
-          setMessages(prev => [...prev, { role: 'assistant', content: followup }]);
+      // If Viv responded with a chat/follow-up, display it directly
+      if (structuredType === 'chat' || !structuredType || !structuredParsed) {
+        if (typeof assistantReply === 'string' && assistantReply.trim() !== '') {
+          setMessages(prev => [...prev, { role: 'assistant', content: assistantReply }]);
         }
+        return;
       }
+
+      // Viv has enough info — send to backend
+      console.log('[DEBUG] Forwarding structured payload to middleware:', structuredParsed);
+
+      const middlewareResponse = await fetch('https://api.vivaitable.com/api/askViv/mollyscafe1', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: structuredType,
+          parsed: structuredParsed
+        })
+      });
+
+      const result = await middlewareResponse.json();
+      console.log('[DEBUG] Middleware (logic only) result:', result);
+
+      // Ask Viv to confirm the backend result in her own voice
+      const handoffMessages = [
+        { role: 'system', content: 'You just completed this action:' },
+        { role: 'system', content: JSON.stringify(result) },
+        { role: 'user', content: 'Can you confirm that in your own words for the guest?' }
+      ];
+
+      const followupResponse = await fetch('https://api.vivaitable.com/api/askViv/mollyscafe1', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [...updatedMessages, ...handoffMessages] })
+      });
+
+      const followupData = await followupResponse.json();
+      const followup = followupData.response || followupData.raw;
+
+      if (followup && typeof followup === 'string') {
+        setMessages(prev => [...prev, { role: 'assistant', content: followup }]);
+      }
+
     } catch (error) {
       console.error('[ERROR] Viv interaction failed:', error);
     } finally {
@@ -83,6 +89,7 @@ export default function MollysCafe() {
           <li key={idx}><strong>{msg.role}:</strong> {msg.content}</li>
         ))}
       </ul>
+
       <input
         type="text"
         value={input}
@@ -90,6 +97,7 @@ export default function MollysCafe() {
         placeholder="Type your message..."
         style={{ width: '100%', marginTop: '1rem', padding: '0.5rem' }}
       />
+
       <button
         onClick={sendMessage}
         disabled={isLoading}
