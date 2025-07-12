@@ -28,14 +28,23 @@ export default function MollysCafe() {
       console.log('[DEBUG] Viv A response:', aiData);
       setAiData(aiData);
 
-      const assistantReply =
+      let assistantReply =
         aiData.response ||
         aiData.raw ||
         aiData.message ||
-        aiData.reply ||
-        (aiData.type?.startsWith('availability.check') && aiData.available === false
-          ? `I'm sorry, that time is booked. Want to try ${aiData.alternatives?.before} or ${aiData.alternatives?.after}?`
-          : JSON.stringify(aiData, null, 2));
+        aiData.reply;
+
+      if (!assistantReply && aiData.type?.startsWith('availability.check') && aiData.available === false) {
+        const before = aiData.alternatives?.before;
+        const after = aiData.alternatives?.after;
+        assistantReply = `I'm sorry, that time is booked. Would you like to try ${
+          before ? `${before}` : ''
+        }${before && after ? ' or ' : ''}${after ? `${after}` : ''}?`;
+      }
+
+      if (!assistantReply && typeof aiData === 'object') {
+        assistantReply = 'I understood your request but could not generate a reply.';
+      }
 
       console.log('[Viv DEBUG] Assistant is replying with:', JSON.stringify(assistantReply));
 
@@ -66,6 +75,10 @@ export default function MollysCafe() {
       }
     } catch (error) {
       console.error('[ERROR] Viv interaction failed:', error);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '⚠️ Sorry, something went wrong while processing your request. Please try again.'
+      }]);
     } finally {
       setIsLoading(false);
     }
