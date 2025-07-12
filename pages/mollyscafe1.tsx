@@ -28,7 +28,15 @@ export default function MollysCafe() {
       console.log('[DEBUG] Viv A response:', aiData);
       setAiData(aiData);
 
-      const assistantReply = aiData.response || aiData.raw || aiData.message || aiData.reply;
+      const assistantReply =
+        aiData.response ||
+        aiData.raw ||
+        aiData.message ||
+        aiData.reply ||
+        (aiData.type?.startsWith('availability.check') && aiData.available === false
+          ? `I'm sorry, that time is booked. Want to try ${aiData.alternatives?.before} or ${aiData.alternatives?.after}?`
+          : JSON.stringify(aiData, null, 2));
+
       console.log('[Viv DEBUG] Assistant is replying with:', JSON.stringify(assistantReply));
 
       if (typeof assistantReply === 'string' && assistantReply.trim() !== '') {
