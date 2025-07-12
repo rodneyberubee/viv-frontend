@@ -50,10 +50,11 @@ export default function MollysCafe() {
         const result = await middlewareResponse.json();
         console.log('[DEBUG] Middleware (logic only) result:', result);
 
-        // Feed the result back into Viv A
+        // Feed the result back into Viv A — ✅ FIXED: no JSON blob
+        const summaryText = `Reservation complete: ${aiData.parsed.partySize} people under the name ${aiData.parsed.name} at ${aiData.parsed.timeSlot} on ${aiData.parsed.date}.`;
+
         const handoffMessages = [
-          { role: 'system', content: 'You just completed this reservation:' },
-          { role: 'system', content: JSON.stringify(result) },
+          { role: 'system', content: summaryText },
           { role: 'user', content: 'Can you confirm it for the guest in your own words?' }
         ];
 
