@@ -45,6 +45,7 @@ Never invent data. Only respond based on what's provided.
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const userPrompt = JSON.stringify(body, null, 2);
+  console.log('[speakViv] 📨 Incoming structured payload:', userPrompt);
 
   try {
     const completion = await openai.chat.completions.create({
@@ -56,10 +57,12 @@ export async function POST(req: NextRequest) {
       temperature: 0.7
     });
 
-    const response = completion.choices?.[0]?.message?.content || '';
+    const response = completion.choices?.[0]?.message?.content?.trim() || '';
+    console.log('[speakViv] 🧠 Viv A response:', response);
+
     return NextResponse.json({ spokenResponse: response });
   } catch (error) {
     console.error('[speakViv] ❌ OpenAI error:', error);
     return NextResponse.json({ spokenResponse: '⚠️ Sorry, I had trouble replying just now.' });
   }
-} 
+}
