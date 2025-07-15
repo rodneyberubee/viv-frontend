@@ -1,4 +1,3 @@
-import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
@@ -40,14 +39,18 @@ Respond naturally and clearly to the customer based on the following types:
   - Example: "👋 Hi there! Want help making a reservation today?"
 
 Never invent data. Only respond based on what's provided.
-`; 
+`;
 
-export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const userPrompt = JSON.stringify(body, null, 2);
-  console.log('[speakViv] 📨 Incoming structured payload:', userPrompt);
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ spokenResponse: 'Method Not Allowed' });
+  }
 
   try {
+    const body = req.body || {};
+    const userPrompt = JSON.stringify(body, null, 2);
+    console.log('[speakViv] 📨 Incoming structured payload:', userPrompt);
+
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
@@ -60,9 +63,9 @@ export async function POST(req: NextRequest) {
     const response = completion.choices?.[0]?.message?.content?.trim() || '';
     console.log('[speakViv] 🧠 Viv A response:', response);
 
-    return NextResponse.json({ spokenResponse: response });
+    return res.status(200).json({ spokenResponse: response });
   } catch (error) {
     console.error('[speakViv] ❌ OpenAI error:', error);
-    return NextResponse.json({ spokenResponse: '⚠️ Sorry, I had trouble replying just now.' });
+    return res.status(500).json({ spokenResponse: '⚠️ Sorry, I had trouble replying just now.' });
   }
 }
