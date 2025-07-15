@@ -51,14 +51,15 @@ export default async function handler(req, res) {
 
   try {
     const body = req.body || {};
-    const userPrompt = JSON.stringify(body, null, 2);
-    console.log('[speakViv] 📨 Incoming structured payload:', userPrompt);
+    const structuredText = `The backend responded with this structured object:\n\n${JSON.stringify(body, null, 2)}\n\nPlease respond appropriately to the customer.`;
+
+    console.log('[speakViv] 📨 Incoming structured payload:', structuredText);
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
+        { role: 'user', content: structuredText }
       ],
       temperature: 0.7
     });
