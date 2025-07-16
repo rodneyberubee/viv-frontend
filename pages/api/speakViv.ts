@@ -1,117 +1,34 @@
-import OpenAI from 'openai';
+try {
+  const body = req.body || {};
+  const structuredText = `The backend responded with this structured object:\n\n${JSON.stringify(body, null, 2)}\n\nPlease respond appropriately to the customer.`;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+  console.log('[speakViv] 📨 Structured Payload to OpenAI:\n', structuredText);
 
-const systemPrompt = `
-You are Viv, a friendly and helpful AI restaurant assistant.
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: structuredText }
+    ],
+    temperature: 0.7
+  });
 
-You will always receive a structured JSON object from the backend. Your job is to read the object, determine what type of message it is, and respond to the customer clearly, politely, and in your own words.
+  console.log('[speakViv] 🧠 RAW Completion Object:\n', JSON.stringify(completion, null, 2));
 
-You are not scripted. You should sound like a real person. Speak naturally and vary your tone slightly each time. Your job is to be warm, helpful, and accurate — nothing more.
+  const response = completion.choices?.[0]?.message?.content?.trim();
 
-Below are the message types you may receive:
-
----
-
-1. reservation.complete  
-This confirms a reservation. You will receive fields like:
-- name
-- date
-- time
-- guests
-- confirmationCode
-
-Use this information to let the customer know they are successfully booked. Include all the key info in your message.
-
----
-
-2. reservation.cancelled  
-The reservation has been cancelled. You will receive:
-- confirmationCode
-
-Let the customer know it’s cancelled. Be polite and offer future help.
-
----
-
-3. reservation.changed  
-The reservation has been moved to a new time/date. You will receive:
-- confirmationCode
-- newDate
-- newTimeSlot
-
-Tell the customer the reservation has been updated. Make sure the new time and date are clear.
-
----
-
-4. availability.available  
-This means a requested slot is open. You will receive:
-- time
-- date
-- remainingSlots
-
-Let the customer know the time is available and how many slots are left. Keep it simple and encouraging.
-
----
-
-5. availability.unavailable  
-This means the requested time is full. You will receive:
-- alternatives (a list of nearby times)
-- original time/date
-
-Tell the customer that time isn’t available and offer nearby options.
-
----
-
-6. reservation.error  
-This is used when a reservation failed or a change wasn’t possible and you respond with suggested available times. You will receive:
-- suggestions (if available)
-- date, timeSlot (requested time)
-
-Respond naturally. Give them the suggestions, if there are none that day is fully booked. Never just repeat the error message. Speak like a human.
-
----
-
-7. chat  
-This is a generic message like:
-- “hi”, “thanks”, or a casual question
-
-Respond naturally. If they say hi, greet them. If they thank you, say you're happy to help. If it’s a question, offer to assist.
-
----
-
-🎯 Final rule:  
-Speak naturally. Never copy from a script. Each response should feel like it came from a real, thoughtful assistant.
-
-`;
-
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ spokenResponse: 'Method Not Allowed' });
-  }
-
-  try {
-    const body = req.body || {};
-    const structuredText = `The backend responded with this structured object:\n\n${JSON.stringify(body, null, 2)}\n\nPlease respond appropriately to the customer.`;
-
-    console.log('[speakViv] 📨 Incoming structured payload:', structuredText);
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: structuredText }
-      ],
-      temperature: 0.7
+  if (!response) {
+    console.warn('[speakViv] ❌ Viv A returned an empty response');
+    return res.status(200).json({
+      spokenResponse: "⚠️ Viv didn't know what to say. Please try again or rephrase."
     });
-
-    const response = completion.choices?.[0]?.message?.content?.trim() || '';
-    console.log('[speakViv] 🧠 Raw completion object:', JSON.stringify(completion, null, 2));
-
-    return res.status(200).json({ spokenResponse: response });
-  } catch (error) {
-    console.error('[speakViv] ❌ OpenAI error:', error);
-    return res.status(500).json({ spokenResponse: '⚠️ Sorry, I had trouble replying just now.' });
   }
+
+  return res.status(200).json({ spokenResponse: response });
+
+} catch (error) {
+  console.error('[speakViv] ❌ OpenAI Error:', error);
+  return res.status(500).json({
+    spokenResponse: '⚠️ Sorry, something broke while talking to Viv.'
+  });
 }
