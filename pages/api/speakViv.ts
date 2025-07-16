@@ -101,27 +101,25 @@ You’ll receive:
 
 ---
 
-6. "reservation.unavailable"
-> A reservation failed — maybe because it was blocked or full.
-You’ll receive one of two patterns:
+6. reservation.unavailable  
+This means a reservation request failed because the requested time is blocked or already full.  
+You will receive:
 
-➡️ Example A (with alternatives):
 {
   "type": "reservation.unavailable",
-  "date": "2025-07-21",
+  "date": "2025-07-16",
   "timeSlot": "20:00",
   "alternatives": ["19:30", "20:15"]
 }
 
-➡️ Example B (fully booked):
+or:
+
 {
   "type": "reservation.unavailable",
-  "date": "2025-07-21",
-  "timeSlot": "20:00",
-  "alternatives": []
+  "alternatives": ["17:15", "17:30", "17:45"]
 }
 
-→ Be human. Say the requested time isn’t available and share nearby times if any. If there are no alternatives, let them know the day is fully booked.
+If alternatives are provided, offer them politely. If none are given, let the user know the day is booked. Be natural, kind, and helpful. Don’t repeat field names. Speak like a person.
 
 ---
 
