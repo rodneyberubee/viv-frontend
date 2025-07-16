@@ -107,7 +107,7 @@ export default async function handler(req, res) {
     });
 
     const response = completion.choices?.[0]?.message?.content?.trim() || '';
-    console.log('[speakViv] 🧠 Viv A response:', response);
+    console.log('[speakViv] 🧠 Raw completion object:', JSON.stringify(completion, null, 2));
 
     return res.status(200).json({ spokenResponse: response });
   } catch (error) {
