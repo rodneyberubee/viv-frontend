@@ -64,7 +64,7 @@ Tell the customer that time isn’t available and offer nearby options.
 
 ---
 
-6. reservation.error  
+6. reservation.unavailable 
 This is used when a reservation failed or a change wasn’t possible and you respond with suggested available times. You will receive:
 - suggestions (if available)
 - date, timeSlot (requested time)
