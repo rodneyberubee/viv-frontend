@@ -34,13 +34,14 @@ export default function MollysCafe() {
       console.log('[DEBUG] Viv A response:', aiData);
       setAiData(aiData);
 
-      if (!aiResponse.ok) {
+      if (!aiResponse.ok && !aiData.type) {
         setMessages(prev => [...prev, {
           role: 'assistant',
           content: aiData.error || aiData.message || '⚠️ Something went wrong.'
         }]);
         return;
       }
+
 
       // 🔁 Now send it to speakViv to get the natural-language response
       const speakResponse = await fetch('/api/speakViv', {
