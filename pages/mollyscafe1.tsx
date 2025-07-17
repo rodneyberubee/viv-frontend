@@ -49,8 +49,18 @@ export default function MollysCafe() {
         body: JSON.stringify(aiData)
       });
 
-      const { spokenResponse } = await speakResponse.json();
+      const speakResult = await speakResponse.json();
+      const spokenResponse = speakResult.spokenResponse;
       const structuredType = aiData.type;
+
+      if (!spokenResponse) {
+        console.warn('[WARN] No spoken response returned from speakViv:', speakResult);
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: '⚠️ Viv had trouble replying. Please try again.'
+        }]);
+        return;
+      }
 
       setMessages(prev => [...prev, { role: 'assistant', content: spokenResponse }]);
 
