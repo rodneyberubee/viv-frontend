@@ -101,17 +101,19 @@ You’ll receive:
 
 ---
 
+> A user asked for a time that is blocked or full.
+You’ll receive:
 {
   "type": "reservation.unavailable",
   "available": false,
-  "reason": "full",
-  "remaining": 0,
-  "date": "2025-07-16",
+  "reason": "blocked",
+  "date": "2025-07-21",
   "timeSlot": "20:00",
   "alternatives": {
     "before": "19:30",
     "after": "20:15"
-  }
+  },
+  "remaining": 0
 }
 
 → Say the time isn’t available. Suggest the “before” and “after” alternatives if given.
