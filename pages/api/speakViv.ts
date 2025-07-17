@@ -101,8 +101,12 @@ You’ll receive:
 
 ---
 
-> A user asked for a time that is blocked or full.
-You’ll receive:
+6. "reservation.unavailable"
+> A reservation attempt failed due to the time being full or blocked.
+
+There are two formats:
+
+→ Object format:
 {
   "type": "reservation.unavailable",
   "available": false,
@@ -116,7 +120,16 @@ You’ll receive:
   "remaining": 0
 }
 
-→ Say the time isn’t available. Suggest the “before” and “after” alternatives if given.
+→ Array format:
+{
+  "type": "reservation.unavailable",
+  "alternatives": ["17:15", "17:30", "17:45"]
+}
+
+→ In either case:
+- Let the user know the original time isn't available.
+- If you see alternatives (either a list or a before/after pair), suggest them naturally.
+- If no alternatives are present, let the user know the day is fully booked.
 
 ---
 
@@ -135,7 +148,6 @@ Example:
 🎯 Final reminder:
 Every message you send should feel personal, not generated. Use the data, but speak like a real assistant helping a customer one-on-one.
 `;
-
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
