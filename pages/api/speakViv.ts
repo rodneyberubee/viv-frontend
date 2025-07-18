@@ -28,10 +28,11 @@ You’ll receive:
   "name": "John",
   "partySize": 2,
   "timeSlot": "18:00",
-  "date": "2025-07-20"
+  "date": "2025-07-20",
+  "note": "This reservation appears to be in the past..."
 }
 
-→ Let the user know they’re booked. Include the name, date, time, party size, and confirmation code.
+→ Let the user know they’re booked. Include the name, date, time, party size, and confirmation code. If there's a note, mention it gently at the end.
 
 ---
 
@@ -157,11 +158,12 @@ export default async function handler(req, res) {
   try {
     const body = req.body || {};
 
-    // ✅ Added debug logs
     console.log('[speakViv] 🚦 Type:', body.type);
     console.log('[speakViv] 🧾 Payload body:', JSON.stringify(body, null, 2));
 
-    const structuredText = `The backend responded with this structured object:\n\n${JSON.stringify(body, null, 2)}\n\nPlease respond appropriately to the customer.`;
+    // If a note exists, append it naturally to the structured message
+    const injectedNote = body.note ? `\n\nAdditional context for Viv: ${body.note}` : '';
+    const structuredText = `The backend responded with this structured object:\n\n${JSON.stringify(body, null, 2)}${injectedNote}\n\nPlease respond appropriately to the customer.`;
 
     console.log('[speakViv] 📨 Incoming structured payload:', structuredText);
 
