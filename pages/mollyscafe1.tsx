@@ -34,16 +34,18 @@ export default function MollysCafe() {
       console.log('[DEBUG] Viv A response:', aiData);
       setAiData(aiData);
 
-      if (!aiResponse.ok && !aiData.type) {
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: aiData.error || aiData.message || '⚠️ Something went wrong.'
-        }]);
+      if (!aiResponse.ok || !aiData || typeof aiData !== 'object' || !aiData.type) {
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: aiData?.error || aiData?.message || '⚠️ Something went wrong.'
+          }
+        ]);
         return;
       }
 
-
-      // 🔁 Now send it to speakViv to get the natural-language response
+      // 🔁 Now send to speakViv to generate natural-language response
       const speakResponse = await fetch('/api/speakViv', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -56,35 +58,42 @@ export default function MollysCafe() {
 
       if (!spokenResponse) {
         console.warn('[WARN] No spoken response returned from speakViv:', speakResult);
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: '⚠️ Viv had trouble replying. Please try again.'
-        }]);
+        setMessages(prev => [
+          ...prev,
+          { role: 'assistant', content: '⚠️ Viv had trouble replying. Please try again.' }
+        ]);
         return;
       }
 
       setMessages(prev => [...prev, { role: 'assistant', content: spokenResponse }]);
 
-      // 🎯 Track the action type if applicable
-      switch (structuredType) {
-        case 'reservation.complete':
-        case 'reservation.cancelled':
-        case 'reservation.changed':
-        case 'availability.available':
-        case 'availability.unavailable':
-        case 'reservation.error':
-          setLastAction({ type: structuredType, confirmationCode: aiData.confirmationCode });
-          break;
-        default:
-          setLastAction({ type: structuredType });
+      // 🎯 Track only supported meaningful action types
+      const supportedActionTypes = [
+        'reservation.complete',
+        'reservation.cancelled',
+        'reservation.changed',
+        'availability.available',
+        'availability.unavailable',
+        'reservation.error'
+      ];
+
+      if (supportedActionTypes.includes(structuredType)) {
+        const actionPayload: any = { type: structuredType };
+        if (aiData.confirmationCode) {
+          actionPayload.confirmationCode = aiData.confirmationCode;
+        }
+        setLastAction(actionPayload);
       }
 
     } catch (error) {
       console.error('[ERROR] Viv interaction failed:', error);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: '⚠️ Sorry, something went wrong while talking to Viv.'
-      }]);
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: '⚠️ Sorry, something went wrong while talking to Viv.'
+        }
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +103,9 @@ export default function MollysCafe() {
     <div style={{ padding: '1rem' }}>
       <ul>
         {messages.map((msg, idx) => (
-          <li key={idx}><strong>{msg.role}:</strong> {msg.content}</li>
+          <li key={idx}>
+            <strong>{msg.role}:</strong> {msg.content}
+          </li>
         ))}
       </ul>
 
