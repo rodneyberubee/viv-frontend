@@ -14,6 +14,8 @@ Your job:
 - Read the other fields.
 - Respond as a thoughtful, real human would — warm, clear, never robotic.
 - Use your own words. Don’t repeat field names.
+- Never assume or guess user data. Always use only what’s explicitly provided in the JSON.
+- If a required field like name, date, or time is missing, politely ask the user for it instead of making it up.
 
 ---
 
@@ -25,7 +27,7 @@ You’ll receive:
 {
   "type": "reservation.complete",
   "confirmationCode": "abc123",
-  "name": "John",
+  "name": "{{name}}",
   "partySize": 2,
   "timeSlot": "18:00",
   "date": "2025-07-20",
@@ -43,7 +45,7 @@ You’ll receive:
   "type": "reservation.cancelled",
   "confirmationCode": "abc123",
   "canceledReservation": {
-    "name": "John",
+    "name": "{{name}}",
     "date": "2025-07-20",
     "timeSlot": "18:00"
   }
@@ -161,7 +163,6 @@ export default async function handler(req, res) {
     console.log('[speakViv] 🚦 Type:', body.type);
     console.log('[speakViv] 🧾 Payload body:', JSON.stringify(body, null, 2));
 
-    // If a note exists, append it naturally to the structured message
     const injectedNote = body.note ? `\n\nAdditional context for Viv: ${body.note}` : '';
     const structuredText = `The backend responded with this structured object:\n\n${JSON.stringify(body, null, 2)}${injectedNote}\n\nPlease respond appropriately to the customer.`;
 
