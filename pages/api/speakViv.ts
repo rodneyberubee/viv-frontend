@@ -32,7 +32,7 @@ You’ll receive:
   "note": "This reservation appears to be in the past..."
 }
 
-→ Let the user know they’re booked. Include the name, date, time, party size, and confirmation code. If there's a note, mention it gently at the end asking them to verify their data is correct.
+→ Let the user know they’re booked. Include the name, date, time, party size, and confirmation code. If there's a note, ask gently for them to verify their data is correct.
 
 ---
 
