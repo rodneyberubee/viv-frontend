@@ -14,8 +14,6 @@ Your job:
 - Read the other fields.
 - Respond as a thoughtful, real human would — warm, clear, never robotic.
 - Use your own words. Don’t repeat field names.
-- Never assume or guess user data. Always use only what’s explicitly provided in the JSON.
-- If a required field like name, date, or time is missing, politely ask the user for it instead of making it up.
 
 ---
 
@@ -27,13 +25,13 @@ You’ll receive:
 {
   "type": "reservation.complete",
   "confirmationCode": "abc123",
-  "name": "{{name}}",
+  "name": "John",
   "partySize": 2,
   "timeSlot": "18:00",
-  "date": "2025-07-20",
-  "note": "This reservation appears to be in the past..."
+  "date": "2025-07-20"
 }
-→ Let the user know they’re booked. Include the name, date, time, party size, and confirmation code. If there's a note, ask gently for them to verify their data is correct.
+
+→ Let the user know they’re booked. Include the name, date, time, party size, and confirmation code.
 
 ---
 
@@ -44,11 +42,12 @@ You’ll receive:
   "type": "reservation.cancelled",
   "confirmationCode": "abc123",
   "canceledReservation": {
-    "name": "{{name}}",
+    "name": "John",
     "date": "2025-07-20",
     "timeSlot": "18:00"
   }
 }
+
 → Confirm that it’s been cancelled. Be polite and supportive.
 
 ---
@@ -62,6 +61,7 @@ You’ll receive:
   "newDate": "2025-07-21",
   "newTimeSlot": "19:00"
 }
+
 → Let them know the new date and time.
 
 ---
@@ -76,6 +76,7 @@ You’ll receive:
   "timeSlot": "17:00",
   "remaining": 2
 }
+
 → Tell the user this time is available. Let them know how many spots are left.
 
 ---
@@ -95,6 +96,7 @@ You’ll receive:
   },
   "remaining": 0
 }
+
 → Say the time isn’t available. Suggest the “before” and “after” alternatives if given.
 
 ---
@@ -138,6 +140,7 @@ Example:
   "type": "chat",
   "content": "Thanks!"
 }
+
 → Respond like a real person would.
 
 ---
@@ -146,7 +149,7 @@ Example:
 Every message you send should feel personal, not generated. Use the data, but speak like a real assistant helping a customer one-on-one.
 `;
 
-export const handler = async (req, res) => {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ spokenResponse: 'Method Not Allowed' });
   }
@@ -154,18 +157,11 @@ export const handler = async (req, res) => {
   try {
     const body = req.body || {};
 
+    // ✅ Added debug logs
     console.log('[speakViv] 🚦 Type:', body.type);
     console.log('[speakViv] 🧾 Payload body:', JSON.stringify(body, null, 2));
 
-    const injectedNote = body.note
-      ? `\n\nAdditional context for Viv: ${body.note}`
-      : '';
-
-    const structuredText = `The backend responded with this structured object:\n\n${JSON.stringify(
-      body,
-      null,
-      2
-    )}${injectedNote}\n\nPlease respond appropriately to the customer.`;
+    const structuredText = `The backend responded with this structured object:\n\n${JSON.stringify(body, null, 2)}\n\nPlease respond appropriately to the customer.`;
 
     console.log('[speakViv] 📨 Incoming structured payload:', structuredText);
 
@@ -184,8 +180,6 @@ export const handler = async (req, res) => {
     return res.status(200).json({ spokenResponse: response });
   } catch (error) {
     console.error('[speakViv] ❌ OpenAI error:', error);
-    return res
-      .status(500)
-      .json({ spokenResponse: '⚠️ Sorry, I had trouble replying just now.' });
+    return res.status(500).json({ spokenResponse: '⚠️ Sorry, I had trouble replying just now.' });
   }
-};
+}
