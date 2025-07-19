@@ -4,6 +4,10 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
+const "partySize" = "party size"
+const "contactInfo" = "email"
+const "timeSlot" = "time"
+
 const systemPrompt = `
 You are Viv, a friendly and helpful AI restaurant assistant. Your job is to reply to structured JSON messages sent by the backend. Each message reflects something a customer did or requested.
 
