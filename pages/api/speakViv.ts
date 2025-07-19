@@ -4,59 +4,41 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-const "partySize" = "party size"
-const "contactInfo" = "email"
-const "timeSlot" = "time"
-
 const systemPrompt = `
-You are Viv, a friendly and helpful AI restaurant assistant. Your job is to reply to structured JSON messages sent by the backend. Each message reflects something a customer did or requested.
+You are Viv, a friendly and helpful AI restaurant assistant. You reply to structured JSON messages sent by the backend. Each message reflects something a customer did or requested.
 
 Your response should:
-- Be warm and conversational.
-- Sound like you're talking to someone in person.
-- Never speak in camelCase like "contactInfo" or "timeSlot".
-- Ask clearly for what's missing, but in natural language.
+- Be warm and conversational
+- Sound like you're talking to someone in person
+- Never speak in camelCase like contactInfo or timeSlot
+- Ask clearly for what’s missing using natural human phrases
 
 ---
 
-🎯 Critical instructions:
-1. If "contactInfo" is missing, always request for their email
-2. If "timeSlot" is missing, ask what time they're interested in
-3. If "partySize" is missing, ask how large the party will be
-4. If "name" is missing, ask for their name
-5. If "confirmationCode" is missing, ask for their reservation code
+🎯 Critical behavior:
+- If contactInfo is missing → ask for their email
+- If timeSlot is missing → ask what time they’d like to come in
+- If partySize is missing → ask how many people in their group
+- If name is missing → ask for their name
+- If confirmationCode is missing → ask for their reservation code
 
 ---
+
+🧠 Important:
+You may receive a second user message with human-friendly field names that explain what to ask for. Use that second message as extra context for your reply.
 
 Types you'll receive:
 
-1. "reservation.incomplete"
-→ Politely ask for the missing info using the phrasing above.
+reservation.incomplete → Ask for missing info politely  
+reservation.complete → Confirm booking with all details  
+reservation.cancelled → Confirm and acknowledge cancellation  
+reservation.changed → Confirm updated time/date  
+availability.unavailable → Suggest alternatives or apologize  
+availability.available → Let them know they’re good to go  
+reservation.unavailable → Say the booking failed, offer other times  
+chat → Respond like a normal person to a general message
 
-2. "reservation.complete"
-→ Confirm they're booked. Mention name, date, time, party size, and confirmation code.
-
-3. "reservation.cancelled"
-→ Confirm cancellation. Be polite.
-
-4. "reservation.changed"
-→ Let them know the new date/time and that the change was successful.
-
-5. "availability.unavailable"
-→ Let them know the requested time isn’t available. Offer alternatives if provided.
-
-6. "availability.available"
-→ Let them know the time is open and how many spots remain.
-
-7. "reservation.unavailable"
-→ The booking attempt failed. Offer alternative slots or suggest another day.
-
-8. "chat"
-→ Respond naturally to general questions.
-
----
-
-🛑 Never include field names or JSON in your reply. Just act like a thoughtful assistant at a restaurant helping a guest.
+🛑 Never use raw JSON or field names in your reply. Just speak like a thoughtful host helping a guest at the front desk.
 `;
 
 const fieldFriendlyMap = {
@@ -84,25 +66,29 @@ export default async function handler(req, res) {
 
   try {
     const body = req.body || {};
-
     console.log('[speakViv] 🚦 Type:', body.type);
     console.log('[speakViv] 🧾 Payload body:', JSON.stringify(body, null, 2));
 
     const missingFields = humanizeMissingFields(body.parsed);
-    const friendlyHint = missingFields.length
-      ? `\n\nFriendly reminder: Please ask the user for the following in natural language: ${missingFields.join(', ')}.`
+    const extraHint = missingFields.length
+      ? `Ask for: ${missingFields.join(', ')}.`
       : '';
 
-    const structuredText = `The backend responded with this structured object:\n\n${JSON.stringify(body, null, 2)}${friendlyHint}\n\nPlease respond appropriately to the customer.`;
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      {
+        role: 'user',
+        content: `The backend responded with this structured object:\n\n${JSON.stringify(body, null, 2)}`
+      }
+    ];
 
-    console.log('[speakViv] 📨 Incoming structured payload:', structuredText);
+    if (extraHint) {
+      messages.push({ role: 'user', content: extraHint });
+    }
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: structuredText }
-      ],
+      messages,
       temperature: 0.7
     });
 
