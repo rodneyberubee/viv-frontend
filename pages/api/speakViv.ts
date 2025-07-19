@@ -55,6 +55,23 @@ Types you'll receive:
 🛑 Never include field names or JSON in your reply. Just act like a thoughtful assistant at a restaurant helping a guest.
 `;
 
+const fieldFriendlyMap = {
+  name: 'your name',
+  partySize: 'how many people are in your group',
+  contactInfo: 'your email address',
+  date: 'what day you’d like to come in',
+  timeSlot: 'what time you’d prefer',
+  confirmationCode: 'your reservation code'
+};
+
+const humanizeMissingFields = (parsed) => {
+  if (!parsed || typeof parsed !== 'object') return [];
+
+  return Object.entries(parsed)
+    .filter(([_, val]) => val === null)
+    .map(([key]) => fieldFriendlyMap[key])
+    .filter(Boolean);
+};
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -64,11 +81,15 @@ export default async function handler(req, res) {
   try {
     const body = req.body || {};
 
-    // ✅ Added debug logs
     console.log('[speakViv] 🚦 Type:', body.type);
     console.log('[speakViv] 🧾 Payload body:', JSON.stringify(body, null, 2));
 
-    const structuredText = `The backend responded with this structured object:\n\n${JSON.stringify(body, null, 2)}\n\nPlease respond appropriately to the customer.`;
+    const missingFields = humanizeMissingFields(body.parsed);
+    const friendlyHint = missingFields.length
+      ? `\n\nFriendly reminder: Please ask the user for the following in natural language: ${missingFields.join(', ')}.`
+      : '';
+
+    const structuredText = `The backend responded with this structured object:\n\n${JSON.stringify(body, null, 2)}${friendlyHint}\n\nPlease respond appropriately to the customer.`;
 
     console.log('[speakViv] 📨 Incoming structured payload:', structuredText);
 
