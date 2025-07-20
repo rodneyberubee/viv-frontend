@@ -7,11 +7,11 @@ const openai = new OpenAI({
 // 🧠 Friendly label translation map
 const fieldFriendlyMap = {
   name: 'your name',
-  partySize: 'how many people are in your party',
-  contactInfo: 'your email',
+  party size: 'how many people are in your party',
+  contact info: 'your email',
   date: 'which day you’d like to come in',
-  timeSlot: 'what time you’d prefer',
-  confirmationCode: 'your reservation code'
+  time slot: 'what time you’d prefer',
+  confirmation code: 'your reservation code'
 };
 
 // 🔍 Extract missing fields as readable phrases
@@ -29,7 +29,7 @@ You are Viv, a friendly and helpful AI restaurant assistant. You respond to stru
 
 Your job:
 - Respond warmly, like you're talking to someone in person.
-- Never repeat internal field names like "contactInfo" or "timeSlot".
+- Never repeat internal field names like "contact info" or "time slot".
 - Use natural language to ask for whatever is missing or confirm what just happened.
 
 ---
