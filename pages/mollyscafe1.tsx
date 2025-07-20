@@ -42,18 +42,7 @@ export default function MollysCafe() {
         return;
       }
 
-      // 🔎 Handle incomplete flow
-      if (aiData.type?.endsWith('.incomplete')) {
-        const missingFields = Object.entries(aiData.parsed || {})
-          .filter(([_, value]) => value === null)
-          .map(([key]) => key);
-        
-        const missingPrompt = `I just need a bit more info to complete your ${aiData.intent} request. Could you provide: ${missingFields.join(', ')}?`;
-        setMessages(prev => [...prev, { role: 'assistant', content: missingPrompt }]);
-        return;
-      }
-
-      // 🔁 Now send it to speakViv to get the natural-language response
+      // 🧠 Let speakViv handle all types, including .incomplete
       const speakResponse = await fetch('/api/speakViv', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
