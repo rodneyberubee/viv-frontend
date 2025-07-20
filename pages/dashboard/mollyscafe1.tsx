@@ -1,62 +1,46 @@
-import { useEffect, useState } from 'react';
+// pages/dashboard/mollyscafe1.tsx
 
-const MollysCafeDashboard = () => {
-  const [reservations, setReservations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    const fetchReservations = async () => {
-      try {
-        const res = await fetch('/api/dashboard/mollyscafe1');
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to load reservations.');
-        setReservations(data.reservations);
-      } catch (err: any) {
-        setError(err.message || 'Unknown error');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchReservations();
-  }, []);
-
-  if (loading) return <p>Loading dashboard...</p>;
-  if (error) return <p>Error: {error}</p>;
-
+export default function Mollyscafe1Dashboard() {
   return (
-    <div style={{ padding: '2rem' }}>
-      <h1>Molly’s Cafe Dashboard</h1>
-      <table border="1" cellPadding="10" style={{ marginTop: '1rem', borderCollapse: 'collapse' }}>
+    <div style={{
+      padding: '2rem',
+      maxWidth: '800px',
+      margin: '0 auto',
+      fontFamily: 'sans-serif',
+    }}>
+      <h1 style={{ textAlign: 'center' }}>Molly’s Café Dashboard</h1>
+
+      <p style={{ textAlign: 'center', color: '#888' }}>
+        This is just a visual placeholder. Live data will come later.
+      </p>
+
+      <table style={{
+        width: '100%',
+        marginTop: '2rem',
+        borderCollapse: 'collapse',
+        border: '1px solid #ccc',
+      }}>
         <thead>
-          <tr>
-            <th>Confirmation</th>
-            <th>Name</th>
-            <th>Party Size</th>
-            <th>Date</th>
-            <th>Time</th>
-            <th>Contact</th>
-            <th>Status</th>
+          <tr style={{ backgroundColor: '#f2f2f2' }}>
+            <th style={{ border: '1px solid #ccc', padding: '0.5rem' }}>Confirmation</th>
+            <th style={{ border: '1px solid #ccc', padding: '0.5rem' }}>Name</th>
+            <th style={{ border: '1px solid #ccc', padding: '0.5rem' }}>Party Size</th>
+            <th style={{ border: '1px solid #ccc', padding: '0.5rem' }}>Date</th>
+            <th style={{ border: '1px solid #ccc', padding: '0.5rem' }}>Time</th>
+            <th style={{ border: '1px solid #ccc', padding: '0.5rem' }}>Status</th>
           </tr>
         </thead>
         <tbody>
-          {reservations.map((r: any) => (
-            <tr key={r.confirmationCode}>
-              <td>{r.confirmationCode}</td>
-              <td>{r.name}</td>
-              <td>{r.partySize}</td>
-              <td>{r.date}</td>
-              <td>{r.timeSlot}</td>
-              <td>{r.contactInfo}</td>
-              <td>{r.status}</td>
-            </tr>
-          ))}
+          <tr>
+            <td style={{ border: '1px solid #ccc', padding: '0.5rem' }}>ABC123</td>
+            <td style={{ border: '1px solid #ccc', padding: '0.5rem' }}>John Smith</td>
+            <td style={{ border: '1px solid #ccc', padding: '0.5rem' }}>2</td>
+            <td style={{ border: '1px solid #ccc', padding: '0.5rem' }}>2025-07-21</td>
+            <td style={{ border: '1px solid #ccc', padding: '0.5rem' }}>6:30 PM</td>
+            <td style={{ border: '1px solid #ccc', padding: '0.5rem' }}>confirmed</td>
+          </tr>
         </tbody>
       </table>
     </div>
   );
-};
-
-export default MollysCafeDashboard;
-
+}
