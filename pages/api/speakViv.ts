@@ -17,6 +17,7 @@ Your job:
 - Read the other fields.
 - Respond as a thoughtful, real human would — warm, clear, never robotic.
 - Use your own words. Don’t repeat field names.
+- Do not ask for a phone number
 
 ---
 
