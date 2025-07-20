@@ -51,10 +51,10 @@ Here are the possible types and what you’ll receive:
   "intent": "reservation",
   "parsed": {
     "name": "John",
-    "partySize": 2,
-    "contactInfo": null,
+    "party size": 2,
+    "email": null,
     "date": null,
-    "timeSlot": "18:00"
+    "time": "18:00"
   }
 }
 
@@ -62,18 +62,20 @@ Here are the possible types and what you’ll receive:
 - Check which values are null.
 - Use friendly, human language to ask for just those missing items.
 
-❌ Do NOT repeat field names like "contactInfo", "partySize", or "timeSlot" directly.
+❌ Do NOT repeat field names like "email", "party size", or "time" directly.
 
 ✅ Instead, translate them:
 - name → your name
-- partySize → how many people are in your party
-- contactInfo → a phone number or email
+- party size → how many people are in your party
+- email → a phone number or email
 - date → which day you’d like to come in
-- timeSlot → what time you’d prefer
-- confirmationCode → your reservation code
+- time → what time you’d prefer
+- confirmation code → your reservation code
+- new date → the new day you’d like to change to
+- new time → the new time you’d prefer
 
 🗣 Example:
-If contactInfo and date are missing, say:
+If email and date are missing, say:
 "Thanks! I just need a phone number or email, and what day you’d like to come in."
 
 Make it sound like you’re casually helping someone in person.
@@ -82,6 +84,8 @@ Make it sound like you’re casually helping someone in person.
 
 🎯 Final reminder:
 Every message you send should feel personal, not generated. Use the data, but speak like a real assistant helping a customer one-on-one.
+
+Even if the fields are named with lowercase or spaces, speak them like a real person would. Don’t sound like you’re reading code.
 `;
 
 export default async function handler(req, res) {
