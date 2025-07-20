@@ -1,147 +1,109 @@
 import { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
-export default function Mollyscafe1Dashboard() {
-  const [restaurantConfig, setRestaurantConfig] = useState({
-    max_reservations: 10,
-    future_cutoff: 30,
-  });
+export const Dashboard = () => {
+  const [restaurantId, setRestaurantId] = useState('mollyscafe1');
+  const [restaurantData, setRestaurantData] = useState<any>({});
+  const [reservationUpdates, setReservationUpdates] = useState<any>({});
+  const [mapUpdates, setMapUpdates] = useState<any>({});
 
-  const [reservationData, setReservationData] = useState([
-    {
-      confirmationCode: 'ABC123',
-      name: 'John Smith',
-      partySize: 2,
-      date: '2025-07-21',
-      timeSlot: '6:30 PM',
-      contactInfo: 'john@example.com',
-      status: 'confirmed',
-      notes: 'Birthday table',
-    },
-    {
-      confirmationCode: 'XYZ456',
-      name: 'Jane Doe',
-      partySize: 4,
-      date: '2025-07-21',
-      timeSlot: '7:00 PM',
-      contactInfo: 'jane@example.com',
-      status: 'blocked',
-      notes: '',
-    },
-  ]);
+  const fetchData = async () => {
+    const res = await fetch(`/api/control/dashboard/${restaurantId}`);
+    const data = await res.json();
+    setRestaurantData(data);
+  };
 
-  const [updatedConfig, setUpdatedConfig] = useState({
-    max_reservations: '',
-    future_cutoff: '',
-  });
-
-  const handleSettingChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUpdatedConfig({
-      ...updatedConfig,
-      [e.target.name]: e.target.value,
+  const pushReservationUpdate = async () => {
+    await fetch(`/api/control/updateReservation/${restaurantId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reservationUpdates),
     });
+    fetchData();
   };
 
-  const handleUpdateSettings = () => {
-    console.log('SEND TO MIDDLEWARE: updateRestaurantMap', updatedConfig);
-  };
-
-  const handleCancel = (confirmationCode: string) => {
-    console.log('SEND TO MIDDLEWARE: cancelReservation', confirmationCode);
-  };
-
-  const handleBlock = (confirmationCode: string) => {
-    console.log('SEND TO MIDDLEWARE: blockTime', confirmationCode);
+  const pushMapUpdate = async () => {
+    await fetch(`/api/control/updateRestaurantMap/${restaurantId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(mapUpdates),
+    });
+    fetchData();
   };
 
   return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif', maxWidth: '1000px', margin: '0 auto' }}>
-      <h1 style={{ textAlign: 'center' }}>Molly’s Café Dashboard</h1>
+    <div className="p-4 grid gap-4">
+      <h1 className="text-2xl font-bold">Restaurant Dashboard</h1>
 
-      {/* --- Settings (View + Update) --- */}
-      <section style={{ marginTop: '2rem' }}>
-        <h2>Restaurant Settings</h2>
-        <p><strong>Max Reservations Per Slot:</strong> {restaurantConfig.max_reservations}</p>
-        <p><strong>Advance Booking Cutoff (minutes):</strong> {restaurantConfig.future_cutoff}</p>
+      <div className="grid grid-cols-2 gap-6">
+        {/* Restaurant Settings Viewer */}
+        <Card>
+          <CardContent className="space-y-2">
+            <h2 className="text-xl font-semibold">Restaurant Settings</h2>
+            <pre className="text-sm whitespace-pre-wrap">
+              {JSON.stringify(restaurantData.restaurantMap, null, 2)}
+            </pre>
+          </CardContent>
+        </Card>
 
-        <div style={{ marginTop: '1rem' }}>
-          <label>
-            Max Reservations:{' '}
-            <input
-              type="number"
-              name="max_reservations"
-              value={updatedConfig.max_reservations}
-              onChange={handleSettingChange}
-              style={{ marginRight: '1rem' }}
+        {/* Reservation Viewer */}
+        <Card>
+          <CardContent className="space-y-2">
+            <h2 className="text-xl font-semibold">Reservation Table</h2>
+            <pre className="text-sm whitespace-pre-wrap">
+              {JSON.stringify(restaurantData.reservations, null, 2)}
+            </pre>
+          </CardContent>
+        </Card>
+
+        {/* Map Update Form */}
+        <Card>
+          <CardContent className="space-y-2">
+            <h2 className="text-lg font-medium">Update Restaurant Info</h2>
+            <Input
+              placeholder="Max Reservations"
+              onChange={(e) => setMapUpdates({ ...mapUpdates, maxReservations: e.target.value })}
             />
-          </label>
-          <label>
-            Booking Cutoff (mins):{' '}
-            <input
-              type="number"
-              name="future_cutoff"
-              value={updatedConfig.future_cutoff}
-              onChange={handleSettingChange}
+            <Input
+              placeholder="Future Cutoff Time"
+              onChange={(e) => setMapUpdates({ ...mapUpdates, futureCutoff: e.target.value })}
             />
-          </label>
-          <div style={{ marginTop: '1rem' }}>
-            <button onClick={handleUpdateSettings}>Update Settings</button>
-          </div>
-        </div>
-      </section>
+            <Button onClick={pushMapUpdate}>Update Settings</Button>
+          </CardContent>
+        </Card>
 
-      {/* --- Reservations Table --- */}
-      <section style={{ marginTop: '3rem' }}>
-        <h2>Upcoming Reservations</h2>
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
-          <thead>
-            <tr>
-              <th style={th}>Code</th>
-              <th style={th}>Guest Name</th>
-              <th style={th}>Party Size</th>
-              <th style={th}>Date</th>
-              <th style={th}>Time</th>
-              <th style={th}>Contact</th>
-              <th style={th}>Status</th>
-              <th style={th}>Notes</th>
-              <th style={th}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reservationData.map((res) => (
-              <tr key={res.confirmationCode}>
-                <td style={td}>{res.confirmationCode}</td>
-                <td style={td}>{res.name}</td>
-                <td style={td}>{res.partySize}</td>
-                <td style={td}>{res.date}</td>
-                <td style={td}>{res.timeSlot}</td>
-                <td style={td}>{res.contactInfo}</td>
-                <td style={td}>{res.status}</td>
-                <td style={td}>{res.notes || '—'}</td>
-                <td style={td}>
-                  <button onClick={() => handleCancel(res.confirmationCode)} style={{ marginRight: '0.5rem' }}>
-                    Cancel
-                  </button>
-                  <button onClick={() => handleBlock(res.confirmationCode)}>
-                    Block
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+        {/* Reservation Update Form */}
+        <Card>
+          <CardContent className="space-y-2">
+            <h2 className="text-lg font-medium">Update or Add Reservation</h2>
+            <Input
+              placeholder="Guest Name"
+              onChange={(e) => setReservationUpdates({ ...reservationUpdates, name: e.target.value })}
+            />
+            <Input
+              placeholder="Party Size"
+              onChange={(e) => setReservationUpdates({ ...reservationUpdates, partySize: e.target.value })}
+            />
+            <Input
+              placeholder="Date (YYYY-MM-DD)"
+              onChange={(e) => setReservationUpdates({ ...reservationUpdates, date: e.target.value })}
+            />
+            <Input
+              placeholder="Time Slot (e.g. 7:00 PM)"
+              onChange={(e) => setReservationUpdates({ ...reservationUpdates, timeSlot: e.target.value })}
+            />
+            <Input
+              placeholder="Contact Info"
+              onChange={(e) => setReservationUpdates({ ...reservationUpdates, contactInfo: e.target.value })}
+            />
+            <Button onClick={pushReservationUpdate}>Submit Reservation</Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Button onClick={fetchData}>Refresh Dashboard</Button>
     </div>
   );
-}
-
-const th: React.CSSProperties = {
-  border: '1px solid #ccc',
-  padding: '0.5rem',
-  backgroundColor: '#f9f9f9',
-  textAlign: 'left',
-};
-
-const td: React.CSSProperties = {
-  border: '1px solid #ddd',
-  padding: '0.5rem',
 };
