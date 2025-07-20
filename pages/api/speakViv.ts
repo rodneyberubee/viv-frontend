@@ -43,7 +43,7 @@ Here are the possible types and what you’ll receive:
 ---
 
 8. "reservation.incomplete", "reservation.change.incomplete", etc.
-→ This means the user asked to make/change/cancel a reservation, but not all required fields are present yet. Do not refer to the logic route by name, the customer already knows what theyre asking for. You're naming the name of the field breaks immersion.
+→ This means the user asked to make/change/cancel a reservation, but not all required fields are present yet. Do not refer to the "intent" by name, the customer already knows what they're asking for.
 
 → You’ll receive something like:
 {
