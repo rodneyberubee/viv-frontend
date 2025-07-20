@@ -1,7 +1,6 @@
 import { useState } from 'react';
 
 export default function Mollyscafe1Dashboard() {
-  // Dummy state — replace with real data later
   const [restaurantConfig, setRestaurantConfig] = useState({
     max_reservations: 10,
     future_cutoff: 30,
@@ -14,7 +13,9 @@ export default function Mollyscafe1Dashboard() {
       partySize: 2,
       date: '2025-07-21',
       timeSlot: '6:30 PM',
+      contactInfo: 'john@example.com',
       status: 'confirmed',
+      notes: 'Birthday table',
     },
     {
       confirmationCode: 'XYZ456',
@@ -22,7 +23,9 @@ export default function Mollyscafe1Dashboard() {
       partySize: 4,
       date: '2025-07-21',
       timeSlot: '7:00 PM',
+      contactInfo: 'jane@example.com',
       status: 'blocked',
+      notes: '',
     },
   ]);
 
@@ -40,69 +43,66 @@ export default function Mollyscafe1Dashboard() {
 
   const handleUpdateSettings = () => {
     console.log('SEND TO MIDDLEWARE: updateRestaurantMap', updatedConfig);
-    // TODO: POST to /api/control/updateRestaurantMap with restaurantId and updatedConfig
   };
 
   const handleCancel = (confirmationCode: string) => {
     console.log('SEND TO MIDDLEWARE: cancelReservation', confirmationCode);
-    // TODO: POST to /api/cancelReservation with confirmationCode + restaurantId
   };
 
   const handleBlock = (confirmationCode: string) => {
-    console.log('SEND TO MIDDLEWARE: blockTime for slot', confirmationCode);
-    // TODO: POST to /api/control/blockTime with reservationId or time
+    console.log('SEND TO MIDDLEWARE: blockTime', confirmationCode);
   };
 
   return (
     <div style={{ padding: '2rem', fontFamily: 'sans-serif', maxWidth: '1000px', margin: '0 auto' }}>
       <h1 style={{ textAlign: 'center' }}>Molly’s Café Dashboard</h1>
 
-      {/* --- Zone 1: Restaurant Settings View --- */}
+      {/* --- Settings (View + Update) --- */}
       <section style={{ marginTop: '2rem' }}>
-        <h2>🔍 Current Settings (Read)</h2>
-        <p><strong>Max Reservations:</strong> {restaurantConfig.max_reservations}</p>
-        <p><strong>Future Cutoff (mins):</strong> {restaurantConfig.future_cutoff}</p>
-      </section>
+        <h2>Restaurant Settings</h2>
+        <p><strong>Max Reservations Per Slot:</strong> {restaurantConfig.max_reservations}</p>
+        <p><strong>Advance Booking Cutoff (minutes):</strong> {restaurantConfig.future_cutoff}</p>
 
-      {/* --- Zone 2: Restaurant Settings Update --- */}
-      <section style={{ marginTop: '2rem' }}>
-        <h2>🛠️ Update Settings (Write)</h2>
-        <label>
-          Max Reservations:{' '}
-          <input
-            type="number"
-            name="max_reservations"
-            value={updatedConfig.max_reservations}
-            onChange={handleSettingChange}
-            style={{ marginRight: '1rem' }}
-          />
-        </label>
-        <label>
-          Future Cutoff (mins):{' '}
-          <input
-            type="number"
-            name="future_cutoff"
-            value={updatedConfig.future_cutoff}
-            onChange={handleSettingChange}
-          />
-        </label>
         <div style={{ marginTop: '1rem' }}>
-          <button onClick={handleUpdateSettings}>Update Settings</button>
+          <label>
+            Max Reservations:{' '}
+            <input
+              type="number"
+              name="max_reservations"
+              value={updatedConfig.max_reservations}
+              onChange={handleSettingChange}
+              style={{ marginRight: '1rem' }}
+            />
+          </label>
+          <label>
+            Booking Cutoff (mins):{' '}
+            <input
+              type="number"
+              name="future_cutoff"
+              value={updatedConfig.future_cutoff}
+              onChange={handleSettingChange}
+            />
+          </label>
+          <div style={{ marginTop: '1rem' }}>
+            <button onClick={handleUpdateSettings}>Update Settings</button>
+          </div>
         </div>
       </section>
 
-      {/* --- Zone 3: Reservations View --- */}
+      {/* --- Reservations Table --- */}
       <section style={{ marginTop: '3rem' }}>
-        <h2>📅 Current Reservations (Read)</h2>
+        <h2>Upcoming Reservations</h2>
         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
           <thead>
             <tr>
-              <th style={th}>Confirmation</th>
-              <th style={th}>Name</th>
-              <th style={th}>Party</th>
+              <th style={th}>Code</th>
+              <th style={th}>Guest Name</th>
+              <th style={th}>Party Size</th>
               <th style={th}>Date</th>
               <th style={th}>Time</th>
+              <th style={th}>Contact</th>
               <th style={th}>Status</th>
+              <th style={th}>Notes</th>
               <th style={th}>Actions</th>
             </tr>
           </thead>
@@ -114,7 +114,9 @@ export default function Mollyscafe1Dashboard() {
                 <td style={td}>{res.partySize}</td>
                 <td style={td}>{res.date}</td>
                 <td style={td}>{res.timeSlot}</td>
+                <td style={td}>{res.contactInfo}</td>
                 <td style={td}>{res.status}</td>
+                <td style={td}>{res.notes || '—'}</td>
                 <td style={td}>
                   <button onClick={() => handleCancel(res.confirmationCode)} style={{ marginRight: '0.5rem' }}>
                     Cancel
@@ -135,10 +137,11 @@ export default function Mollyscafe1Dashboard() {
 const th: React.CSSProperties = {
   border: '1px solid #ccc',
   padding: '0.5rem',
-  backgroundColor: '#f2f2f2',
+  backgroundColor: '#f9f9f9',
+  textAlign: 'left',
 };
 
 const td: React.CSSProperties = {
-  border: '1px solid #ccc',
+  border: '1px solid #ddd',
   padding: '0.5rem',
 };
