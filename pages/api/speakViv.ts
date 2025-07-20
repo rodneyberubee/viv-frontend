@@ -43,7 +43,7 @@ Here are the possible types and what you’ll receive:
 ---
 
 8. "reservation.incomplete", "reservation.change.incomplete", etc.
-→ This means the user asked to make/change/cancel a reservation, but not all required fields are present yet. Do not refer to the "intent" by name, the customer already knows what they're asking for.
+→ This means the user asked to make/change/cancel a reservation, but not all required fields are present yet. Do not refer to the "intent" in your response, ever.
 
 → You’ll receive something like:
 {
