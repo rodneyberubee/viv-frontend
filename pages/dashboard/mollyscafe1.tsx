@@ -5,18 +5,19 @@ export default function MollysCafeDashboard() {
     <div className="min-h-screen bg-gray-100 p-6 space-y-10">
       <h1 className="text-3xl font-bold mb-4">Molly’s Café Dashboard</h1>
 
-      {/* 🔼 TOP HALF — RESTAURANT SETTINGS */}
+      {/* 🔼 TOP QUARTER — RESTAURANT CONFIG */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* VIEW SETTINGS */}
+        {/* VIEW RESTAURANT CONFIG */}
         <section className="bg-white p-6 rounded-xl shadow">
           <h2 className="text-xl font-semibold mb-4">📖 Current Settings</h2>
+          {/* Replace these with Airtable fields */}
           <p><strong>Restaurant Name:</strong> Molly's Cafe</p>
           <p><strong>Time Zone:</strong> America/Los_Angeles</p>
           <p><strong>Current Time:</strong> 12:43 PM</p>
           <p><strong>Max Reservations per Slot:</strong> 2</p>
         </section>
 
-        {/* UPDATE SETTINGS */}
+        {/* EDIT CONFIG SECTION */}
         <section className="bg-white p-6 rounded-xl shadow">
           <h2 className="text-xl font-semibold mb-4">✏️ Update Settings</h2>
           <form className="space-y-4">
@@ -29,13 +30,13 @@ export default function MollysCafeDashboard() {
               <input type="text" placeholder="America/Los_Angeles" className="w-full border rounded p-2" />
             </div>
             <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-              Update Settings
+              Update Config
             </button>
           </form>
         </section>
       </div>
 
-      {/* STORE HOURS */}
+      {/* 📅 OPERATING HOURS */}
       <section className="bg-white p-6 rounded-xl shadow">
         <h2 className="text-xl font-semibold mb-4">📅 Weekly Operating Hours</h2>
         <form className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -55,9 +56,9 @@ export default function MollysCafeDashboard() {
         </form>
       </section>
 
-      {/* 🔽 BOTTOM HALF — RESERVATIONS */}
+      {/* 🔽 BOTTOM 3/4 — RESERVATIONS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* RESERVATION TABLE */}
+        {/* TABLE DISPLAY */}
         <section className="bg-white p-6 rounded-xl shadow">
           <h2 className="text-xl font-semibold mb-4">📖 Upcoming Reservations</h2>
           <table className="w-full border-collapse">
@@ -72,6 +73,7 @@ export default function MollysCafeDashboard() {
               </tr>
             </thead>
             <tbody>
+              {/* Map Airtable data here */}
               <tr>
                 <td className="border px-3 py-2">ABC123</td>
                 <td className="border px-3 py-2">John Smith</td>
@@ -80,19 +82,11 @@ export default function MollysCafeDashboard() {
                 <td className="border px-3 py-2">6:30 PM</td>
                 <td className="border px-3 py-2">confirmed</td>
               </tr>
-              <tr>
-                <td className="border px-3 py-2">XYZ456</td>
-                <td className="border px-3 py-2">Jane Doe</td>
-                <td className="border px-3 py-2">4</td>
-                <td className="border px-3 py-2">2025-07-21</td>
-                <td className="border px-3 py-2">7:00 PM</td>
-                <td className="border px-3 py-2">blocked</td>
-              </tr>
             </tbody>
           </table>
         </section>
 
-        {/* ADD/UPDATE RESERVATION */}
+        {/* ADD/UPDATE SECTION */}
         <section className="bg-white p-6 rounded-xl shadow">
           <h2 className="text-xl font-semibold mb-4">✏️ Add or Update Reservation</h2>
           <form className="space-y-4">
