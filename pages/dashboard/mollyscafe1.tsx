@@ -64,7 +64,7 @@ export const MollysCafeDashboard = () => {
               <label className="block font-medium capitalize">{key}</label>
               <input
                 name={key}
-                value={val || ''}
+                value={String(val ?? '')}
                 onChange={handleConfigChange}
                 className="w-full p-2 border rounded"
               />
@@ -91,7 +91,7 @@ export const MollysCafeDashboard = () => {
               {reservations.map((r, i) => (
                 <tr key={i} className="border-t">
                   {Object.values(r).map((val, j) => (
-                    <td key={j} className="border px-2 py-1">{val}</td>
+                    <td key={j} className="border px-2 py-1">{String(val)}</td>
                   ))}
                 </tr>
               ))}
