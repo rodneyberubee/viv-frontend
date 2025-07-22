@@ -34,7 +34,7 @@ export default function MollysCafeDashboard() {
   const submitConfigUpdate = async (e) => {
     e.preventDefault();
     try {
-      await fetch('/api/dashboard/mollyscafe1/updateConfig', {
+      await fetch('https://vivaitable.com//api/dashboard/mollyscafe1/updateConfig', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -56,7 +56,7 @@ export default function MollysCafeDashboard() {
   const submitReservation = async (e) => {
     e.preventDefault();
     try {
-      await fetch('/api/dashboard/mollyscafe1/updateReservation', {
+      await fetch('https://vivaitable.com//api/dashboard/mollyscafe1/updateReservation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
