@@ -17,7 +17,7 @@ export default function MollysCafeDashboard() {
         const res = await fetch('https://vivaitable.com/api/dashboard/mollyscafe1/reservations');
         const data = await res.json();
         console.log('[DEBUG] Dashboard fetched reservations:', data);
-        setReservations(data);
+        setReservations(data.reservations || []); // ✅ FIXED HERE
       } catch (error) {
         console.error('[ERROR] Failed to fetch reservations:', error);
       }
