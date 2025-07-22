@@ -117,7 +117,7 @@ const MollysCafeDashboard = () => {
                   {Object.entries(res).map(([key, val]) => (
                     <td key={key} className="border px-2 py-1">
                       {key === 'id' ? (
-                        <span className="text-xs text-gray-500">{val}</span>
+                        <span className="text-xs text-gray-500">{String(val)}</span>
                       ) : (
                         <input
                           type="text"
