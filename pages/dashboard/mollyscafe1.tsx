@@ -154,7 +154,9 @@ export default function MollysCafeDashboard() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="text-center p-4 text-gray-500">No reservations found.</td>
+                  <td colSpan={6} className="text-center p-4 text-gray-500">
+                    No reservations found.
+                  </td>
                 </tr>
               )}
             </tbody>
