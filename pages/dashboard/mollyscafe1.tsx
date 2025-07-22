@@ -44,11 +44,20 @@ const MollysCafeDashboard = () => {
   };
 
   const updateConfig = async () => {
+    // cast known numeric fields before sending to Airtable
+    const numericFields = ['maxReservations', 'futureCutoff'];
+    const cleaned = Object.fromEntries(
+      Object.entries(config).map(([key, val]) => [
+        key,
+        numericFields.includes(key) ? parseInt(val, 10) || 0 : val
+      ])
+    );
+
     try {
       const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/updateConfig', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
+        body: JSON.stringify(cleaned),
       });
       await res.json();
       alert('Config updated');
