@@ -49,7 +49,7 @@ const MollysCafeDashboard = () => {
     const cleaned = Object.fromEntries(
       Object.entries(config).map(([key, val]) => [
         key,
-        numericFields.includes(key) ? parseInt(val, 10) || 0 : val
+        numericFields.includes(key) ? parseInt(String(val), 10) || 0 : val
       ])
     );
 
