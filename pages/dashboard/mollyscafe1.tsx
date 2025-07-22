@@ -4,13 +4,11 @@ const MollysCafeDashboard = () => {
   const [config, setConfig] = useState({});
   const [reservations, setReservations] = useState([]);
 
-  // Fetch config
   useEffect(() => {
     async function fetchConfig() {
       try {
-        const res = await fetch('https://vivaitable.com/api/dashboard/mollyscafe1/config');
+        const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/config');
         const data = await res.json();
-        console.log('[DEBUG] Loaded config:', data);
         setConfig(data);
       } catch (err) {
         console.error('[ERROR] Fetching config failed:', err);
@@ -19,9 +17,8 @@ const MollysCafeDashboard = () => {
 
     async function fetchReservations() {
       try {
-        const res = await fetch('https://vivaitable.com/api/dashboard/mollyscafe1/reservations');
+        const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/reservations');
         const data = await res.json();
-        console.log('[DEBUG] Loaded reservations:', data);
         setReservations(data.reservations || []);
       } catch (err) {
         console.error('[ERROR] Fetching reservations failed:', err);
@@ -37,18 +34,44 @@ const MollysCafeDashboard = () => {
     setConfig((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleReservationEdit = (e, id) => {
+    const { name, value } = e.target;
+    setReservations((prev) =>
+      prev.map((res) =>
+        res.id === id ? { ...res, [name]: value } : res
+      )
+    );
+  };
+
   const updateConfig = async () => {
     try {
-      const res = await fetch('https://vivaitable.com/api/dashboard/mollyscafe1/updateConfig', {
+      const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/updateConfig', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
+        body: JSON.stringify(config),
       });
-      const result = await res.json();
+      await res.json();
       alert('Config updated');
-      console.log(result);
     } catch (err) {
       console.error('[ERROR] Updating config failed:', err);
+    }
+  };
+
+  const updateReservations = async () => {
+    try {
+      const payload = reservations.map(({ id, ...fields }) => ({
+        recordId: id,
+        updatedFields: fields
+      }));
+      const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/updateReservation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      await res.json();
+      alert('Reservations updated');
+    } catch (err) {
+      console.error('[ERROR] Updating reservations failed:', err);
     }
   };
 
@@ -82,16 +105,29 @@ const MollysCafeDashboard = () => {
           <table className="w-full text-sm border">
             <thead>
               <tr className="bg-gray-100">
-                {reservations.length > 0 && Object.keys(reservations[0]).map((key) => (
-                  <th key={key} className="border px-2 py-1 text-left capitalize">{key}</th>
-                ))}
+                {reservations.length > 0 &&
+                  Object.keys(reservations[0]).map((key) => (
+                    <th key={key} className="border px-2 py-1 text-left capitalize">{key}</th>
+                  ))}
               </tr>
             </thead>
             <tbody>
-              {reservations.map((r, i) => (
-                <tr key={i} className="border-t">
-                  {Object.values(r).map((val, j) => (
-                    <td key={j} className="border px-2 py-1">{String(val)}</td>
+              {reservations.map((res, i) => (
+                <tr key={res.id} className="border-t">
+                  {Object.entries(res).map(([key, val]) => (
+                    <td key={key} className="border px-2 py-1">
+                      {key === 'id' ? (
+                        <span className="text-xs text-gray-500">{val}</span>
+                      ) : (
+                        <input
+                          type="text"
+                          name={key}
+                          value={String(val ?? '')}
+                          onChange={(e) => handleReservationEdit(e, res.id)}
+                          className="w-full p-1 border rounded"
+                        />
+                      )}
+                    </td>
                   ))}
                 </tr>
               ))}
@@ -101,6 +137,9 @@ const MollysCafeDashboard = () => {
             </tbody>
           </table>
         </div>
+        <button onClick={updateReservations} className="mt-4 bg-green-600 text-white px-4 py-2 rounded">
+          Update Reservations
+        </button>
       </section>
     </div>
   );
