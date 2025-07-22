@@ -37,7 +37,10 @@ export default function MollysCafeDashboard() {
       await fetch('/api/dashboard/mollyscafe1/updateConfig', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
+        body: JSON.stringify({
+          ...config,
+          maxReservations: parseInt(config.maxReservations, 10)
+        })
       });
       alert('Settings updated!');
     } catch (err) {
@@ -56,7 +59,10 @@ export default function MollysCafeDashboard() {
       await fetch('/api/dashboard/mollyscafe1/updateReservation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(reservationForm)
+        body: JSON.stringify({
+          ...reservationForm,
+          partySize: parseInt(reservationForm.partySize, 10)
+        })
       });
       alert('Reservation submitted!');
     } catch (err) {
