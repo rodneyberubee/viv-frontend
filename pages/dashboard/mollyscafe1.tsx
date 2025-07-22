@@ -148,7 +148,7 @@ export default function MollysCafeDashboard() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="text-center py-4 text-gray-500">
+                  <td colSpan={6} className="text-center py-4 text-gray-500">
                     No reservations yet.
                   </td>
                 </tr>
