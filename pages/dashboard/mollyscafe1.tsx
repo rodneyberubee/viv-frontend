@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-export const MollysCafeDashboard = () => {
+const MollysCafeDashboard = () => {
   const [config, setConfig] = useState({});
   const [reservations, setReservations] = useState([]);
 
@@ -105,3 +105,5 @@ export const MollysCafeDashboard = () => {
     </div>
   );
 };
+
+export default MollysCafeDashboard;
