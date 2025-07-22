@@ -136,4 +136,56 @@ export default function MollysCafeDashboard() {
             </thead>
             <tbody>
               {reservations.length > 0 ? (
-                reservations
+                reservations.map((res, i) => (
+                  <tr key={i}>
+                    <td className="border px-3 py-2">{res.confirmationCode}</td>
+                    <td className="border px-3 py-2">{res.guestName}</td>
+                    <td className="border px-3 py-2">{res.partySize}</td>
+                    <td className="border px-3 py-2">{res.date}</td>
+                    <td className="border px-3 py-2">{res.timeSlot}</td>
+                    <td className="border px-3 py-2">{res.status}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" className="text-center py-4 text-gray-500">
+                    No reservations yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </section>
+
+        <section className="bg-white p-6 rounded-xl shadow">
+          <h2 className="text-xl font-semibold mb-4">➕ Manual Reservation</h2>
+          <form className="space-y-4" onSubmit={submitReservation}>
+            <div>
+              <label className="block mb-1 font-medium">Guest Name</label>
+              <input name="guestName" value={reservationForm.guestName} onChange={handleReservationChange} className="w-full border rounded p-2" />
+            </div>
+            <div>
+              <label className="block mb-1 font-medium">Party Size</label>
+              <input name="partySize" type="number" value={reservationForm.partySize} onChange={handleReservationChange} className="w-full border rounded p-2" />
+            </div>
+            <div>
+              <label className="block mb-1 font-medium">Date</label>
+              <input name="date" type="date" value={reservationForm.date} onChange={handleReservationChange} className="w-full border rounded p-2" />
+            </div>
+            <div>
+              <label className="block mb-1 font-medium">Time Slot</label>
+              <input name="timeSlot" type="time" value={reservationForm.timeSlot} onChange={handleReservationChange} className="w-full border rounded p-2" />
+            </div>
+            <div>
+              <label className="block mb-1 font-medium">Contact Info</label>
+              <input name="contactInfo" value={reservationForm.contactInfo} onChange={handleReservationChange} className="w-full border rounded p-2" />
+            </div>
+            <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
+              Submit Reservation
+            </button>
+          </form>
+        </section>
+      </div>
+    </div>
+  );
+}
