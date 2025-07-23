@@ -44,13 +44,15 @@ const MollysCafeDashboard = () => {
   };
 
   const updateConfig = async () => {
-    // cast known numeric fields before sending to Airtable
     const numericFields = ['maxReservations', 'futureCutoff'];
+    const excluded = ['restaurantId', 'baseId', 'tableId', 'name', 'autonumber', 'slug', 'timeZone', 'calibratedTime'];
     const cleaned = Object.fromEntries(
-      Object.entries(config).map(([key, val]) => [
-        key,
-        numericFields.includes(key) ? parseInt(String(val), 10) || 0 : val
-      ])
+      Object.entries(config)
+        .filter(([key]) => !excluded.includes(key))
+        .map(([key, val]) => [
+          key,
+          numericFields.includes(key) ? parseInt(String(val), 10) || 0 : val
+        ])
     );
 
     try {
@@ -68,7 +70,7 @@ const MollysCafeDashboard = () => {
 
   const updateReservations = async () => {
     try {
-      const payload = reservations.map(({ id, ...fields }) => ({
+      const payload = reservations.map(({ id, rawConfirmationCode, dateFormatted, ...fields }) => ({
         recordId: id,
         updatedFields: fields
       }));
@@ -84,6 +86,9 @@ const MollysCafeDashboard = () => {
     }
   };
 
+  const configHidden = ['restaurantId', 'baseId', 'tableId', 'name', 'autonumber', 'slug', 'timeZone', 'calibratedTime'];
+  const reservationHidden = ['id', 'rawConfirmationCode', 'dateFormatted'];
+
   return (
     <div className="min-h-screen bg-gray-100 p-6 space-y-8">
       <h1 className="text-3xl font-bold">Molly’s Cafe Dashboard</h1>
@@ -91,17 +96,19 @@ const MollysCafeDashboard = () => {
       <section className="bg-white p-6 rounded shadow">
         <h2 className="text-xl font-semibold mb-4">Restaurant Config</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {Object.entries(config).map(([key, val]) => (
-            <div key={key}>
-              <label className="block font-medium capitalize">{key}</label>
-              <input
-                name={key}
-                value={String(val ?? '')}
-                onChange={handleConfigChange}
-                className="w-full p-2 border rounded"
-              />
-            </div>
-          ))}
+          {Object.entries(config)
+            .filter(([key]) => !configHidden.includes(key))
+            .map(([key, val]) => (
+              <div key={key}>
+                <label className="block font-medium capitalize">{key}</label>
+                <input
+                  name={key}
+                  value={String(val ?? '')}
+                  onChange={handleConfigChange}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+            ))}
         </div>
         <button onClick={updateConfig} className="mt-4 bg-blue-600 text-white px-4 py-2 rounded">
           Update Config
@@ -115,19 +122,20 @@ const MollysCafeDashboard = () => {
             <thead>
               <tr className="bg-gray-100">
                 {reservations.length > 0 &&
-                  Object.keys(reservations[0]).map((key) => (
-                    <th key={key} className="border px-2 py-1 text-left capitalize">{key}</th>
-                  ))}
+                  Object.keys(reservations[0])
+                    .filter((key) => !reservationHidden.includes(key))
+                    .map((key) => (
+                      <th key={key} className="border px-2 py-1 text-left capitalize">{key}</th>
+                    ))}
               </tr>
             </thead>
             <tbody>
               {reservations.map((res, i) => (
                 <tr key={res.id} className="border-t">
-                  {Object.entries(res).map(([key, val]) => (
-                    <td key={key} className="border px-2 py-1">
-                      {key === 'id' ? (
-                        <span className="text-xs text-gray-500">{String(val)}</span>
-                      ) : (
+                  {Object.entries(res)
+                    .filter(([key]) => !reservationHidden.includes(key))
+                    .map(([key, val]) => (
+                      <td key={key} className="border px-2 py-1">
                         <input
                           type="text"
                           name={key}
@@ -135,9 +143,8 @@ const MollysCafeDashboard = () => {
                           onChange={(e) => handleReservationEdit(e, res.id)}
                           className="w-full p-1 border rounded"
                         />
-                      )}
-                    </td>
-                  ))}
+                      </td>
+                    ))}
                 </tr>
               ))}
               {reservations.length === 0 && (
