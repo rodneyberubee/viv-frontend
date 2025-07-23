@@ -205,7 +205,7 @@ const MollysCafeDashboard = () => {
                         <input
                           type="text"
                           name={key}
-                          value={key === 'timeSlot' ? format24hr(val) : String(val ?? '')}
+                          value={key === 'timeSlot' ? format24hr(String(val)) : String(val ?? '')}
                           onChange={(e) => handleReservationEdit(e, res.id, i)}
                           className="w-full p-1 border rounded"
                         />
