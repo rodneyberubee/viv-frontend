@@ -1,8 +1,17 @@
 import React, { useEffect, useState } from 'react';
 
+type Config = {
+  maxReservations: number;
+  futureCutoff: number;
+  [key: string]: any;
+};
+
 const MollysCafeDashboard = () => {
-  const [config, setConfig] = useState({});
-  const [reservations, setReservations] = useState([]);
+  const [config, setConfig] = useState<Config>({
+    maxReservations: 0,
+    futureCutoff: 0
+  });
+  const [reservations, setReservations] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchConfig() {
@@ -19,7 +28,7 @@ const MollysCafeDashboard = () => {
       try {
         const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/reservations');
         const data = await res.json();
-        setReservations([...(data.reservations || []), {}]);
+        setReservations([...(data.reservations || []), {}]); // Add one blank row
       } catch (err) {
         console.error('[ERROR] Fetching reservations failed:', err);
       }
@@ -29,12 +38,12 @@ const MollysCafeDashboard = () => {
     fetchReservations();
   }, []);
 
-  const handleConfigChange = (e) => {
+  const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setConfig((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleReservationEdit = (e, id) => {
+  const handleReservationEdit = (e: React.ChangeEvent<HTMLInputElement>, id: string | undefined) => {
     const { name, value } = e.target;
     setReservations((prev) =>
       prev.map((res, i) =>
@@ -91,8 +100,7 @@ const MollysCafeDashboard = () => {
 
   const configHidden = ['restaurantId', 'baseId', 'tableId', 'name', 'autonumber', 'slug', 'timeZone', 'calibratedTime', 'tableName'];
   const reservationHidden = ['id', 'rawConfirmationCode', 'dateFormatted'];
-
-  const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
   return (
     <div className="min-h-screen bg-gray-100 p-6 space-y-8">
