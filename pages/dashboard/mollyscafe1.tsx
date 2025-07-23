@@ -19,7 +19,7 @@ const MollysCafeDashboard = () => {
       try {
         const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/reservations');
         const data = await res.json();
-        setReservations([...data.reservations || []), {}]);
+        setReservations([...(data.reservations || []), {}]);
       } catch (err) {
         console.error('[ERROR] Fetching reservations failed:', err);
       }
