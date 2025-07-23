@@ -19,7 +19,7 @@ const MollysCafeDashboard = () => {
       try {
         const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/reservations');
         const data = await res.json();
-        setReservations(data.reservations || []);
+        setReservations([...data.reservations, {}] || []); // Add 1 blank row
       } catch (err) {
         console.error('[ERROR] Fetching reservations failed:', err);
       }
@@ -37,15 +37,15 @@ const MollysCafeDashboard = () => {
   const handleReservationEdit = (e, id) => {
     const { name, value } = e.target;
     setReservations((prev) =>
-      prev.map((res) =>
-        res.id === id ? { ...res, [name]: value } : res
+      prev.map((res, i) =>
+        res.id === id || (!res.id && i === prev.length - 1) ? { ...res, [name]: value } : res
       )
     );
   };
 
   const updateConfig = async () => {
     const numericFields = ['maxReservations', 'futureCutoff'];
-    const excluded = ['restaurantId', 'baseId', 'tableId', 'name', 'autonumber', 'slug', 'timeZone', 'calibratedTime'];
+    const excluded = ['restaurantId', 'baseId', 'tableId', 'name', 'autonumber', 'slug', 'timeZone', 'calibratedTime', 'tableName'];
     const cleaned = Object.fromEntries(
       Object.entries(config)
         .filter(([key]) => !excluded.includes(key))
@@ -70,10 +70,13 @@ const MollysCafeDashboard = () => {
 
   const updateReservations = async () => {
     try {
-      const payload = reservations.map(({ id, rawConfirmationCode, dateFormatted, ...fields }) => ({
-        recordId: id,
-        updatedFields: fields
-      }));
+      const payload = reservations
+        .filter((res) => Object.keys(res).length > 0 && res.confirmationCode)
+        .map(({ id, rawConfirmationCode, dateFormatted, ...fields }) => ({
+          recordId: id,
+          updatedFields: fields
+        }));
+
       const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/updateReservation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -86,8 +89,10 @@ const MollysCafeDashboard = () => {
     }
   };
 
-  const configHidden = ['restaurantId', 'baseId', 'tableId', 'name', 'autonumber', 'slug', 'timeZone', 'calibratedTime'];
+  const configHidden = ['restaurantId', 'baseId', 'tableId', 'name', 'autonumber', 'slug', 'timeZone', 'calibratedTime', 'tableName'];
   const reservationHidden = ['id', 'rawConfirmationCode', 'dateFormatted'];
+
+  const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
   return (
     <div className="min-h-screen bg-gray-100 p-6 space-y-8">
@@ -96,19 +101,62 @@ const MollysCafeDashboard = () => {
       <section className="bg-white p-6 rounded shadow">
         <h2 className="text-xl font-semibold mb-4">Restaurant Config</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {Object.entries(config)
-            .filter(([key]) => !configHidden.includes(key))
-            .map(([key, val]) => (
-              <div key={key}>
-                <label className="block font-medium capitalize">{key}</label>
-                <input
-                  name={key}
-                  value={String(val ?? '')}
-                  onChange={handleConfigChange}
-                  className="w-full p-2 border rounded"
-                />
-              </div>
-            ))}
+          {/* Max Reservations & Cutoff */}
+          <div>
+            <label className="block font-medium">Max Reservations</label>
+            <input
+              name="maxReservations"
+              value={String(config.maxReservations ?? '')}
+              onChange={handleConfigChange}
+              className="w-full p-2 border rounded"
+            />
+            <label className="block font-medium mt-4">Future Cutoff (minutes)</label>
+            <input
+              name="futureCutoff"
+              value={String(config.futureCutoff ?? '')}
+              onChange={handleConfigChange}
+              className="w-full p-2 border rounded"
+            />
+          </div>
+
+          {/* Weekly Hours Table */}
+          <div className="overflow-auto">
+            <table className="w-full text-sm border">
+              <thead>
+                <tr>
+                  {days.map(day => (
+                    <th key={day} className="border px-2 py-1 capitalize">{day}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  {days.map(day => (
+                    <td key={day + 'Open'} className="border px-1 py-1">
+                      <input
+                        name={`${day}Open`}
+                        value={String(config[`${day}Open`] ?? '')}
+                        onChange={handleConfigChange}
+                        className="w-full p-1 border rounded"
+                      />
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  {days.map(day => (
+                    <td key={day + 'Close'} className="border px-1 py-1">
+                      <input
+                        name={`${day}Close`}
+                        value={String(config[`${day}Close`] ?? '')}
+                        onChange={handleConfigChange}
+                        className="w-full p-1 border rounded"
+                      />
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
         <button onClick={updateConfig} className="mt-4 bg-blue-600 text-white px-4 py-2 rounded">
           Update Config
@@ -131,7 +179,7 @@ const MollysCafeDashboard = () => {
             </thead>
             <tbody>
               {reservations.map((res, i) => (
-                <tr key={res.id} className="border-t">
+                <tr key={res.id || i} className="border-t">
                   {Object.entries(res)
                     .filter(([key]) => !reservationHidden.includes(key))
                     .map(([key, val]) => (
