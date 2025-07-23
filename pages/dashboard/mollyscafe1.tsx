@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import dayjs from 'dayjs';
 
 type Config = {
   maxReservations: number;
@@ -28,7 +29,8 @@ const MollysCafeDashboard = () => {
       try {
         const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/reservations');
         const data = await res.json();
-        setReservations([...(data.reservations || []), {}]); // Add one blank row
+        const padded = [...(data.reservations || []), { confirmationCode: '', guestName: '', partySize: '', date: '', timeSlot: '', status: '' }];
+        setReservations(padded);
       } catch (err) {
         console.error('[ERROR] Fetching reservations failed:', err);
       }
@@ -43,11 +45,11 @@ const MollysCafeDashboard = () => {
     setConfig((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleReservationEdit = (e: React.ChangeEvent<HTMLInputElement>, id: string | undefined) => {
+  const handleReservationEdit = (e: React.ChangeEvent<HTMLInputElement>, id: string | undefined, index: number) => {
     const { name, value } = e.target;
     setReservations((prev) =>
       prev.map((res, i) =>
-        res.id === id || (!res.id && i === prev.length - 1) ? { ...res, [name]: value } : res
+        res.id === id || (!res.id && i === index) ? { ...res, [name]: value } : res
       )
     );
   };
@@ -102,6 +104,14 @@ const MollysCafeDashboard = () => {
   const reservationHidden = ['id', 'rawConfirmationCode', 'dateFormatted'];
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
+  const formatAMPM = (time: string) => {
+    return dayjs(`2000-01-01T${time}`).format('h:mm A'); // Human readable
+  };
+
+  const format24hr = (time: string) => {
+    return dayjs(`2000-01-01T${time}`).format('HH:mm');
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 p-6 space-y-8">
       <h1 className="text-3xl font-bold">Molly’s Cafe Dashboard</h1>
@@ -143,7 +153,7 @@ const MollysCafeDashboard = () => {
                     <td key={day + 'Open'} className="border px-1 py-1">
                       <input
                         name={`${day}Open`}
-                        value={String(config[`${day}Open`] ?? '')}
+                        value={formatAMPM(config[`${day}Open`] || '')}
                         onChange={handleConfigChange}
                         className="w-full p-1 border rounded"
                       />
@@ -155,7 +165,7 @@ const MollysCafeDashboard = () => {
                     <td key={day + 'Close'} className="border px-1 py-1">
                       <input
                         name={`${day}Close`}
-                        value={String(config[`${day}Close`] ?? '')}
+                        value={formatAMPM(config[`${day}Close`] || '')}
                         onChange={handleConfigChange}
                         className="w-full p-1 border rounded"
                       />
@@ -195,17 +205,14 @@ const MollysCafeDashboard = () => {
                         <input
                           type="text"
                           name={key}
-                          value={String(val ?? '')}
-                          onChange={(e) => handleReservationEdit(e, res.id)}
+                          value={key === 'timeSlot' ? format24hr(val) : String(val ?? '')}
+                          onChange={(e) => handleReservationEdit(e, res.id, i)}
                           className="w-full p-1 border rounded"
                         />
                       </td>
                     ))}
                 </tr>
               ))}
-              {reservations.length === 0 && (
-                <tr><td colSpan={10} className="text-center py-4">No reservations yet.</td></tr>
-              )}
             </tbody>
           </table>
         </div>
