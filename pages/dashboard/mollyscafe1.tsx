@@ -100,16 +100,18 @@ const MollysCafeDashboard = () => {
     }
   };
 
-  const configHidden = ['restaurantId', 'baseId', 'tableId', 'name', 'autonumber', 'slug', 'timeZone', 'calibratedTime', 'tableName'];
   const reservationHidden = ['id', 'rawConfirmationCode', 'dateFormatted'];
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
+  // Safe format helpers
   const formatAMPM = (time: string) => {
-    return dayjs(`2000-01-01T${time}`).format('h:mm A'); // Human readable
+    if (!time) return '';
+    return dayjs(`2000-01-01T${time}`).isValid() ? dayjs(`2000-01-01T${time}`).format('h:mm A') : '';
   };
 
   const format24hr = (time: string) => {
-    return dayjs(`2000-01-01T${time}`).format('HH:mm');
+    if (!time) return '';
+    return dayjs(`2000-01-01T${time}`).isValid() ? dayjs(`2000-01-01T${time}`).format('HH:mm') : '';
   };
 
   return (
@@ -124,6 +126,7 @@ const MollysCafeDashboard = () => {
             <label className="block font-medium">Max Reservations</label>
             <input
               name="maxReservations"
+              type="number"
               value={String(config.maxReservations ?? '')}
               onChange={handleConfigChange}
               className="w-full p-2 border rounded"
@@ -131,13 +134,14 @@ const MollysCafeDashboard = () => {
             <label className="block font-medium mt-4">Future Cutoff (minutes)</label>
             <input
               name="futureCutoff"
+              type="number"
               value={String(config.futureCutoff ?? '')}
               onChange={handleConfigChange}
               className="w-full p-2 border rounded"
             />
           </div>
 
-          {/* Weekly Hours Table */}
+          {/* Weekly Hours Table with enforced time inputs */}
           <div className="overflow-auto">
             <table className="w-full text-sm border">
               <thead>
@@ -152,8 +156,9 @@ const MollysCafeDashboard = () => {
                   {days.map(day => (
                     <td key={day + 'Open'} className="border px-1 py-1">
                       <input
+                        type="time"
                         name={`${day}Open`}
-                        value={formatAMPM(config[`${day}Open`] || '')}
+                        value={config[`${day}Open`] || ''}
                         onChange={handleConfigChange}
                         className="w-full p-1 border rounded"
                       />
@@ -164,8 +169,9 @@ const MollysCafeDashboard = () => {
                   {days.map(day => (
                     <td key={day + 'Close'} className="border px-1 py-1">
                       <input
+                        type="time"
                         name={`${day}Close`}
-                        value={formatAMPM(config[`${day}Close`] || '')}
+                        value={config[`${day}Close`] || ''}
                         onChange={handleConfigChange}
                         className="w-full p-1 border rounded"
                       />
@@ -203,7 +209,7 @@ const MollysCafeDashboard = () => {
                     .map(([key, val]) => (
                       <td key={key} className="border px-2 py-1">
                         <input
-                          type="text"
+                          type={key === 'timeSlot' ? 'time' : 'text'}
                           name={key}
                           value={key === 'timeSlot' ? format24hr(String(val)) : String(val ?? '')}
                           onChange={(e) => handleReservationEdit(e, res.id, i)}
