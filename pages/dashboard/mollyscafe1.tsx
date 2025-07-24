@@ -29,7 +29,17 @@ const MollysCafeDashboard = () => {
       try {
         const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/reservations');
         const data = await res.json();
-        const padded = [...(data.reservations || []), { confirmationCode: '', guestName: '', partySize: '', date: '', timeSlot: '', status: '' }];
+
+        // Dynamically create a blank row with same keys as existing reservations
+        const reservationsFromServer = data.reservations || [];
+        const blankRowTemplate = reservationsFromServer.length
+          ? Object.keys(reservationsFromServer[0]).reduce((acc, key) => {
+              acc[key] = key === 'date' ? dayjs().format('YYYY-MM-DD') : '';
+              return acc;
+            }, {} as any)
+          : { date: dayjs().format('YYYY-MM-DD'), timeSlot: '', name: '', partySize: '', contactInfo: '', status: '', confirmationCode: '' };
+
+        const padded = [...reservationsFromServer, blankRowTemplate];
         setReservations(padded);
       } catch (err) {
         console.error('[ERROR] Fetching reservations failed:', err);
@@ -100,15 +110,10 @@ const MollysCafeDashboard = () => {
     }
   };
 
-  const reservationHidden = ['id', 'rawConfirmationCode', 'dateFormatted'];
+  const reservationHidden = ['id', 'rawConfirmationCode', 'dateFormatted', 'notes']; // removed notes
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
   // Safe format helpers
-  const formatAMPM = (time: string) => {
-    if (!time) return '';
-    return dayjs(`2000-01-01T${time}`).isValid() ? dayjs(`2000-01-01T${time}`).format('h:mm A') : '';
-  };
-
   const format24hr = (time: string) => {
     if (!time) return '';
     return dayjs(`2000-01-01T${time}`).isValid() ? dayjs(`2000-01-01T${time}`).format('HH:mm') : '';
@@ -209,7 +214,7 @@ const MollysCafeDashboard = () => {
                     .map(([key, val]) => (
                       <td key={key} className="border px-2 py-1">
                         <input
-                          type={key === 'timeSlot' ? 'time' : 'text'}
+                          type={key === 'timeSlot' ? 'time' : key === 'date' ? 'date' : 'text'}
                           name={key}
                           value={key === 'timeSlot' ? format24hr(String(val)) : String(val ?? '')}
                           onChange={(e) => handleReservationEdit(e, res.id, i)}
