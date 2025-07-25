@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { DateTime } from 'luxon';
 
+// Simple global flag for updates
+export const reservationUpdateEvent = {
+  flag: 0,
+  setFlag(val: number) {
+    this.flag = val;
+    window.dispatchEvent(new CustomEvent('reservationUpdate', { detail: val }));
+  }
+};
+
 type Config = {
   maxReservations: number;
   futureCutoff: number;
@@ -71,6 +80,18 @@ const MollysCafeDashboard = () => {
     fetchConfig();
     fetchReservations();
   }, [config.timeZone, selectedDate]);
+
+  // Listen for reservation update events
+  useEffect(() => {
+    const handler = (e: any) => {
+      if (e.detail === 1) {
+        fetchReservations();
+        reservationUpdateEvent.setFlag(0); // reset flag
+      }
+    };
+    window.addEventListener('reservationUpdate', handler);
+    return () => window.removeEventListener('reservationUpdate', handler);
+  }, []);
 
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
