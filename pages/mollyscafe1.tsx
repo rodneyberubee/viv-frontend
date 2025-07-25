@@ -9,6 +9,9 @@ export default function MollysCafe() {
   const [lastAction, setLastAction] = useState(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Create a broadcast channel for cross-page communication
+  const broadcast = new BroadcastChannel('reservations');
+
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -57,12 +60,10 @@ export default function MollysCafe() {
         { role: 'assistant', content: spokenResponse || '⚠️ Viv had trouble replying.' }
       ]);
 
-      // Trigger dashboard update if reservation completed
+      // Trigger dashboard update via BroadcastChannel if reservation completed
       if (aiData.type && aiData.type.toLowerCase().includes('complete')) {
-        console.log('[DEBUG] Dispatching reservationUpdate event to dashboard');
-        window.dispatchEvent(
-          new CustomEvent('reservationUpdate', { detail: Date.now() }) // unique value forces listener trigger
-        );
+        console.log('[DEBUG] Broadcasting reservation update');
+        broadcast.postMessage({ type: 'reservationUpdate', timestamp: Date.now() });
       }
 
       setLastAction({ type: aiData.type, confirmationCode: aiData.confirmationCode });
