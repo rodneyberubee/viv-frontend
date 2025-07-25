@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import dayjs from 'dayjs';
+import { DateTime } from 'luxon';
 
 type Config = {
   maxReservations: number;
   futureCutoff: number;
+  timeZone?: string;
   [key: string]: any;
 };
 
 const MollysCafeDashboard = () => {
   const [config, setConfig] = useState<Config>({
     maxReservations: 0,
-    futureCutoff: 0
+    futureCutoff: 0,
+    timeZone: 'America/Los_Angeles',
   });
   const [reservations, setReservations] = useState<any[]>([]);
 
@@ -30,14 +32,23 @@ const MollysCafeDashboard = () => {
         const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/reservations');
         const data = await res.json();
 
-        // Dynamically create a blank row with same keys as existing reservations
         const reservationsFromServer = data.reservations || [];
         const blankRowTemplate = reservationsFromServer.length
           ? Object.keys(reservationsFromServer[0]).reduce((acc, key) => {
-              acc[key] = key === 'date' ? dayjs().format('YYYY-MM-DD') : '';
+              acc[key] = key === 'date'
+                ? DateTime.now().setZone(config.timeZone || 'America/Los_Angeles').toFormat('yyyy-MM-dd')
+                : '';
               return acc;
             }, {} as any)
-          : { date: dayjs().format('YYYY-MM-DD'), timeSlot: '', name: '', partySize: '', contactInfo: '', status: '', confirmationCode: '' };
+          : { 
+              date: DateTime.now().setZone(config.timeZone || 'America/Los_Angeles').toFormat('yyyy-MM-dd'),
+              timeSlot: '', 
+              name: '', 
+              partySize: '', 
+              contactInfo: '', 
+              status: '', 
+              confirmationCode: '' 
+            };
 
         const padded = [...reservationsFromServer, blankRowTemplate];
         setReservations(padded);
@@ -48,7 +59,7 @@ const MollysCafeDashboard = () => {
 
     fetchConfig();
     fetchReservations();
-  }, []);
+  }, [config.timeZone]);
 
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -66,7 +77,7 @@ const MollysCafeDashboard = () => {
 
   const updateConfig = async () => {
     const numericFields = ['maxReservations', 'futureCutoff'];
-    const excluded = ['restaurantId', 'baseId', 'tableId', 'name', 'autonumber', 'slug', 'timeZone', 'calibratedTime', 'tableName'];
+    const excluded = ['restaurantId', 'baseId', 'tableId', 'name', 'autonumber', 'slug', 'calibratedTime', 'tableName'];
     const cleaned = Object.fromEntries(
       Object.entries(config)
         .filter(([key]) => !excluded.includes(key))
@@ -110,13 +121,14 @@ const MollysCafeDashboard = () => {
     }
   };
 
-  const reservationHidden = ['id', 'rawConfirmationCode', 'dateFormatted', 'notes']; // removed notes
+  const reservationHidden = ['id', 'rawConfirmationCode', 'dateFormatted', 'notes'];
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-  // Safe format helpers
+  // Time formatting with timezone awareness
   const format24hr = (time: string) => {
     if (!time) return '';
-    return dayjs(`2000-01-01T${time}`).isValid() ? dayjs(`2000-01-01T${time}`).format('HH:mm') : '';
+    const dt = DateTime.fromISO(`2000-01-01T${time}`, { zone: config.timeZone || 'America/Los_Angeles' });
+    return dt.isValid ? dt.toFormat('HH:mm') : '';
   };
 
   return (
@@ -126,7 +138,7 @@ const MollysCafeDashboard = () => {
       <section className="bg-white p-6 rounded shadow">
         <h2 className="text-xl font-semibold mb-4">Restaurant Config</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Max Reservations & Cutoff */}
+          {/* Max Reservations & Cutoff & Timezone */}
           <div>
             <label className="block font-medium">Max Reservations</label>
             <input
@@ -136,12 +148,21 @@ const MollysCafeDashboard = () => {
               onChange={handleConfigChange}
               className="w-full p-2 border rounded"
             />
-            <label className="block font-medium mt-4">Future Cutoff (minutes)</label>
+            <label className="block font-medium mt-4">Future Cutoff (days)</label>
             <input
               name="futureCutoff"
               type="number"
               value={String(config.futureCutoff ?? '')}
               onChange={handleConfigChange}
+              className="w-full p-2 border rounded"
+            />
+            <label className="block font-medium mt-4">Timezone</label>
+            <input
+              name="timeZone"
+              type="text"
+              value={config.timeZone || ''}
+              onChange={handleConfigChange}
+              placeholder="e.g., America/Los_Angeles"
               className="w-full p-2 border rounded"
             />
           </div>
