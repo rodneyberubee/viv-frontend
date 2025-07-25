@@ -4,59 +4,43 @@ import { useState, useEffect, useRef } from 'react';
 
 export default function MollysCafe() {
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastAction, setLastAction] = useState(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  const scrollToBottom = () => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  useEffect(() => scrollToBottom(), [messages, isLoading]);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
-
     const userMessage = { role: 'user', content: input };
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
 
     try {
-      const requestPayload: { messages: any[]; context?: any } = { messages: updatedMessages };
-      if (lastAction) requestPayload.context = lastAction;
+      const payload: { messages: any[]; context?: any } = { messages: [...messages, userMessage] };
+      if (lastAction) payload.context = lastAction;
 
       const aiResponse = await fetch('https://api.vivaitable.com/api/askViv/mollyscafe1', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestPayload)
+        body: JSON.stringify(payload)
       });
-
       const aiData = await aiResponse.json();
-
-      if (!aiResponse.ok && !aiData.type) {
-        setMessages(prev => [...prev, { role: 'assistant', content: aiData.error || '⚠️ Something went wrong.' }]);
-        return;
-      }
 
       const speakResponse = await fetch('/api/speakViv', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(aiData)
       });
-
       const speakResult = await speakResponse.json();
-      const spokenResponse = speakResult.spokenResponse;
 
-      setMessages(prev => [...prev, { role: 'assistant', content: spokenResponse || '⚠️ Viv had trouble replying.' }]);
-
+      setMessages(prev => [...prev, { role: 'assistant', content: speakResult.spokenResponse || '⚠️ Viv had trouble replying.' }]);
       setLastAction({ type: aiData.type, confirmationCode: aiData.confirmationCode });
-    } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Sorry, something went wrong.' }]);
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Something went wrong. Please try again.' }]);
     } finally {
       setIsLoading(false);
     }
@@ -71,25 +55,35 @@ export default function MollysCafe() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
-      {/* Chat container */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4">
         {messages.map((msg, idx) => (
           <div
             key={idx}
-            className={`max-w-[75%] p-3 rounded-lg shadow text-sm ${
-              msg.role === 'assistant'
-                ? 'bg-white self-start text-gray-900'
-                : 'bg-orange-100 self-end text-gray-900'
+            className={`max-w-[75%] p-3 rounded-lg text-sm shadow ${
+              msg.role === 'assistant' ? 'bg-white text-gray-900 self-start' : 'bg-orange-100 text-gray-900 self-end'
             }`}
-            style={{ alignSelf: msg.role === 'assistant' ? 'flex-start' : 'flex-end', marginTop: '8px', marginBottom: '8px' }}
+            style={{ marginBottom: '10px' }}
           >
             {msg.content}
           </div>
         ))}
+
+        {/* Typing indicator */}
+        {isLoading && (
+          <div className="flex items-center space-x-2 mb-3">
+            <div className="bg-white rounded-full px-4 py-2 shadow flex space-x-1">
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-150"></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-300"></div>
+            </div>
+          </div>
+        )}
+
         <div ref={chatEndRef} />
       </div>
 
-      {/* Input area */}
+      {/* Input */}
       <div className="p-3 border-t bg-white flex items-center space-x-2 sticky bottom-0">
         <input
           type="text"
@@ -105,10 +99,10 @@ export default function MollysCafe() {
           className="bg-orange-500 rounded-full w-12 h-12 flex items-center justify-center hover:bg-orange-600"
         >
           <span
-            className="text-orange-500"
+            className=""
             style={{
               transform: 'rotate(-90deg)',
-              textShadow: 'inset 0 1px 2px rgba(0,0,0,0.4)',
+              color: '#FFA94D', // lighter orange
               fontWeight: 'bold',
               fontSize: '1.2rem'
             }}
