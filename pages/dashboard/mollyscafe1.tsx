@@ -59,36 +59,10 @@ const MollysCafeDashboard = () => {
     }
   }
 
-  // Initial fetch
   useEffect(() => {
     fetchConfig();
     fetchReservations();
   }, [config.timeZone, selectedDate]);
-
-  // Auto-refresh every 15 minutes during store hours
-  useEffect(() => {
-    const restaurantTz = config.timeZone || 'America/Los_Angeles';
-    const dayName = selectedDate.toFormat('cccc').toLowerCase(); // e.g., "monday"
-    const open = config[`${dayName}Open`];
-    const close = config[`${dayName}Close`];
-    const now = DateTime.now().setZone(restaurantTz);
-
-    let intervalId: NodeJS.Timeout | null = null;
-    if (open && close) {
-      const openTime = DateTime.fromFormat(open, 'HH:mm', { zone: restaurantTz }).set({
-        year: now.year, month: now.month, day: now.day,
-      });
-      const closeTime = DateTime.fromFormat(close, 'HH:mm', { zone: restaurantTz }).set({
-        year: now.year, month: now.month, day: now.day,
-      });
-      if (now >= openTime && now <= closeTime) {
-        intervalId = setInterval(fetchReservations, 15 * 60 * 1000);
-      }
-    }
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [config, selectedDate]);
 
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -117,12 +91,11 @@ const MollysCafeDashboard = () => {
     );
 
     try {
-      const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/updateConfig', {
+      await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/updateConfig', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(cleaned),
       });
-      await res.json();
       alert('Config updated');
     } catch (err) {
       console.error('[ERROR] Updating config failed:', err);
@@ -138,12 +111,11 @@ const MollysCafeDashboard = () => {
           updatedFields: fields
         }));
 
-      const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/updateReservation', {
+      await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/updateReservation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      await res.json();
       alert('Reservations updated');
     } catch (err) {
       console.error('[ERROR] Updating reservations failed:', err);
@@ -151,16 +123,13 @@ const MollysCafeDashboard = () => {
   };
 
   const reservationHidden = ['id', 'rawConfirmationCode', 'dateFormatted', 'notes'];
-  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-
+  const restaurantTz = config.timeZone || 'America/Los_Angeles';
   const format24hr = (time: string) => {
     if (!time) return '';
-    const dt = DateTime.fromISO(`2000-01-01T${time}`, { zone: config.timeZone || 'America/Los_Angeles' });
+    const dt = DateTime.fromISO(`2000-01-01T${time}`, { zone: restaurantTz });
     return dt.isValid ? dt.toFormat('HH:mm') : '';
   };
 
-  // Filter and sort reservations for the selected date
-  const restaurantTz = config.timeZone || 'America/Los_Angeles';
   const filteredReservations = reservations
     .filter(r => DateTime.fromISO(r.date, { zone: restaurantTz }).hasSame(selectedDate, 'day'))
     .sort((a, b) => {
@@ -176,106 +145,45 @@ const MollysCafeDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6 space-y-8">
-      <h1 className="text-3xl font-bold">Molly’s Cafe Dashboard</h1>
+    <div className="flex min-h-screen bg-gray-100">
+      {/* Sidebar */}
+      <aside className="w-64 bg-white shadow-md p-6 space-y-6">
+        <h2 className="text-2xl font-bold">Dashboard</h2>
+        <nav className="space-y-4">
+          <a className="block font-medium text-blue-600">Reservations</a>
+          <a className="block text-gray-600">Availability</a>
+          <a className="block text-gray-600">Settings</a>
+        </nav>
+      </aside>
 
-      {/* Date navigation */}
-      <div className="flex items-center space-x-4 mb-4">
-        <button onClick={goToPrevDay} className="px-4 py-2 bg-gray-200 rounded">Prev</button>
-        <input
-          type="date"
-          value={selectedDate.toFormat('yyyy-MM-dd')}
-          onChange={onDateChange}
-          className="p-2 border rounded"
-        />
-        <button onClick={goToNextDay} className="px-4 py-2 bg-gray-200 rounded">Next</button>
-      </div>
+      {/* Main Content */}
+      <main className="flex-1 p-8 space-y-8">
+        <h1 className="text-3xl font-bold">Reservations</h1>
 
-      {/* Restaurant Config Section */}
-      <section className="bg-white p-6 rounded shadow">
-        <h2 className="text-xl font-semibold mb-4">Restaurant Config</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block font-medium">Max Reservations</label>
-            <input
-              name="maxReservations"
-              type="number"
-              value={String(config.maxReservations ?? '')}
-              onChange={handleConfigChange}
-              className="w-full p-2 border rounded"
-            />
-            <label className="block font-medium mt-4">Future Cutoff (days)</label>
-            <input
-              name="futureCutoff"
-              type="number"
-              value={String(config.futureCutoff ?? '')}
-              onChange={handleConfigChange}
-              className="w-full p-2 border rounded"
-            />
-            <label className="block font-medium mt-4">Timezone</label>
-            <input
-              name="timeZone"
-              type="text"
-              value={config.timeZone || ''}
-              onChange={handleConfigChange}
-              placeholder="e.g., America/Los_Angeles"
-              className="w-full p-2 border rounded"
-            />
+        {/* Stat Cards */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-white rounded shadow p-4 text-center">
+            <p className="text-2xl font-bold">{filteredReservations.length}</p>
+            <p className="text-gray-600">Today</p>
           </div>
-          <div className="overflow-auto">
-            <table className="w-full text-sm border">
-              <thead>
-                <tr>
-                  {days.map(day => (
-                    <th key={day} className="border px-2 py-1 capitalize">{day}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  {days.map(day => (
-                    <td key={day + 'Open'} className="border px-1 py-1">
-                      <input
-                        type="time"
-                        name={`${day}Open`}
-                        value={config[`${day}Open`] || ''}
-                        onChange={handleConfigChange}
-                        className="w-full p-1 border rounded"
-                      />
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  {days.map(day => (
-                    <td key={day + 'Close'} className="border px-1 py-1">
-                      <input
-                        type="time"
-                        name={`${day}Close`}
-                        value={config[`${day}Close`] || ''}
-                        onChange={handleConfigChange}
-                        className="w-full p-1 border rounded"
-                      />
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
+          <div className="bg-white rounded shadow p-4 text-center">
+            <p className="text-2xl font-bold">0</p>
+            <p className="text-gray-600">This Week</p>
+          </div>
+          <div className="bg-white rounded shadow p-4 text-center">
+            <p className="text-2xl font-bold">0</p>
+            <p className="text-gray-600">This Month</p>
           </div>
         </div>
-        <button onClick={updateConfig} className="mt-4 bg-blue-600 text-white px-4 py-2 rounded">
-          Update Config
-        </button>
-      </section>
 
-      {/* Reservations */}
-      <section className="bg-white p-6 rounded shadow">
-        <h2 className="text-xl font-semibold mb-4">
-          Reservations for {selectedDate.toFormat('MMMM dd, yyyy')}
-        </h2>
-        <div className="overflow-auto">
+        {/* Reservations Table */}
+        <section className="bg-white rounded shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">
+            Reservations for {selectedDate.toFormat('MMMM dd, yyyy')}
+          </h2>
           <table className="w-full text-sm border">
-            <thead>
-              <tr className="bg-gray-100">
+            <thead className="bg-gray-100">
+              <tr>
                 {filteredReservations.length > 0 &&
                   Object.keys(filteredReservations[0])
                     .filter((key) => !reservationHidden.includes(key))
@@ -304,11 +212,100 @@ const MollysCafeDashboard = () => {
               ))}
             </tbody>
           </table>
-        </div>
-        <button onClick={updateReservations} className="mt-4 bg-green-600 text-white px-4 py-2 rounded">
-          Update Reservations
-        </button>
-      </section>
+
+          {/* Date Navigation */}
+          <div className="flex items-center justify-center space-x-4 mt-4">
+            <button onClick={goToPrevDay} className="px-4 py-2 bg-gray-200 rounded">Prev</button>
+            <input
+              type="date"
+              value={selectedDate.toFormat('yyyy-MM-dd')}
+              onChange={onDateChange}
+              className="p-2 border rounded"
+            />
+            <button onClick={goToNextDay} className="px-4 py-2 bg-gray-200 rounded">Next</button>
+          </div>
+
+          <button onClick={updateReservations} className="mt-4 bg-green-600 text-white px-4 py-2 rounded">
+            Update Reservations
+          </button>
+        </section>
+
+        {/* Config Section */}
+        <section className="bg-white rounded shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Restaurant Config</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block font-medium">Max Reservations</label>
+              <input
+                name="maxReservations"
+                type="number"
+                value={String(config.maxReservations ?? '')}
+                onChange={handleConfigChange}
+                className="w-full p-2 border rounded"
+              />
+              <label className="block font-medium mt-4">Future Cutoff (days)</label>
+              <input
+                name="futureCutoff"
+                type="number"
+                value={String(config.futureCutoff ?? '')}
+                onChange={handleConfigChange}
+                className="w-full p-2 border rounded"
+              />
+              <label className="block font-medium mt-4">Timezone</label>
+              <input
+                name="timeZone"
+                type="text"
+                value={config.timeZone || ''}
+                onChange={handleConfigChange}
+                placeholder="e.g., America/Los_Angeles"
+                className="w-full p-2 border rounded"
+              />
+            </div>
+            <div className="overflow-auto">
+              <table className="w-full text-sm border">
+                <thead>
+                  <tr>
+                    {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
+                      <th key={day} className="border px-2 py-1 capitalize">{day}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
+                      <td key={day + 'Open'} className="border px-1 py-1">
+                        <input
+                          type="time"
+                          name={`${day}Open`}
+                          value={config[`${day}Open`] || ''}
+                          onChange={handleConfigChange}
+                          className="w-full p-1 border rounded"
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
+                      <td key={day + 'Close'} className="border px-1 py-1">
+                        <input
+                          type="time"
+                          name={`${day}Close`}
+                          value={config[`${day}Close`] || ''}
+                          onChange={handleConfigChange}
+                          className="w-full p-1 border rounded"
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <button onClick={updateConfig} className="mt-4 bg-blue-600 text-white px-4 py-2 rounded">
+            Update Config
+          </button>
+        </section>
+      </main>
     </div>
   );
 };
