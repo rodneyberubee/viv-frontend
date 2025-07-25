@@ -8,6 +8,16 @@ type Config = {
   [key: string]: any;
 };
 
+const headerLabels: Record<string, string> = {
+  date: 'Date',
+  timeSlot: 'Time Slot',
+  name: 'Name',
+  partySize: 'Party Size',
+  contactInfo: 'Contact Info',
+  status: 'Status',
+  confirmationCode: 'Confirmation Code',
+};
+
 const MollysCafeDashboard = () => {
   const [config, setConfig] = useState<Config>({
     maxReservations: 0,
@@ -35,7 +45,6 @@ const MollysCafeDashboard = () => {
       const data = await res.json();
       const reservationsFromServer = data.reservations || [];
 
-      // Add blank template for editing
       const blankRowTemplate = reservationsFromServer.length
         ? Object.keys(reservationsFromServer[0]).reduce((acc, key) => {
             acc[key] = key === 'date'
@@ -141,18 +150,28 @@ const MollysCafeDashboard = () => {
       return t1.toMillis() - t2.toMillis();
     });
 
-  // Metrics: exclude blanks, include blocked
+  // Metrics: exclude blanks, include blocked only within correct range
   const today = DateTime.now().setZone(restaurantTz).startOf('day');
   const weekStart = today.startOf('week');
+  const weekEnd = today.endOf('week');
   const monthStart = today.startOf('month');
+  const monthEnd = today.endOf('month');
   const validForMetrics = reservations.filter(
     r =>
       ((r.name && r.timeSlot) || r.status === 'blocked') &&
       DateTime.fromISO(r.date, { zone: restaurantTz }).isValid
   );
-  const todayCount = validForMetrics.filter(r => DateTime.fromISO(r.date, { zone: restaurantTz }).hasSame(today, 'day')).length;
-  const weekCount = validForMetrics.filter(r => DateTime.fromISO(r.date, { zone: restaurantTz }) >= weekStart).length;
-  const monthCount = validForMetrics.filter(r => DateTime.fromISO(r.date, { zone: restaurantTz }) >= monthStart).length;
+  const todayCount = validForMetrics.filter(r =>
+    DateTime.fromISO(r.date, { zone: restaurantTz }).hasSame(today, 'day')
+  ).length;
+  const weekCount = validForMetrics.filter(r => {
+    const d = DateTime.fromISO(r.date, { zone: restaurantTz });
+    return d >= weekStart && d <= weekEnd;
+  }).length;
+  const monthCount = validForMetrics.filter(r => {
+    const d = DateTime.fromISO(r.date, { zone: restaurantTz });
+    return d >= monthStart && d <= monthEnd;
+  }).length;
 
   const goToPrevDay = () => setSelectedDate(prev => prev.minus({ days: 1 }));
   const goToNextDay = () => setSelectedDate(prev => prev.plus({ days: 1 }));
@@ -212,7 +231,9 @@ const MollysCafeDashboard = () => {
                   Object.keys(filteredReservations[0])
                     .filter((key) => !reservationHidden.includes(key))
                     .map((key) => (
-                      <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium capitalize">{key}</th>
+                      <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
+                        {headerLabels[key] || key}
+                      </th>
                     ))}
               </tr>
             </thead>
@@ -250,34 +271,41 @@ const MollysCafeDashboard = () => {
           </div>
         </section>
 
-        {/* Config Section (Compact Layout) */}
+        {/* Config Section (Compact Layout with Labels) */}
         <section className="bg-white rounded shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Restaurant Config</h2>
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            <input
-              name="maxReservations"
-              type="number"
-              value={String(config.maxReservations ?? '')}
-              onChange={handleConfigChange}
-              className="p-2 border rounded"
-              placeholder="Max Reservations"
-            />
-            <input
-              name="futureCutoff"
-              type="number"
-              value={String(config.futureCutoff ?? '')}
-              onChange={handleConfigChange}
-              className="p-2 border rounded"
-              placeholder="Future Cutoff (days)"
-            />
-            <input
-              name="timeZone"
-              type="text"
-              value={config.timeZone || ''}
-              onChange={handleConfigChange}
-              placeholder="Timezone"
-              className="p-2 border rounded"
-            />
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">Max Reservations</label>
+              <input
+                name="maxReservations"
+                type="number"
+                value={String(config.maxReservations ?? '')}
+                onChange={handleConfigChange}
+                className="p-2 border rounded w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">Future Cutoff (days)</label>
+              <input
+                name="futureCutoff"
+                type="number"
+                value={String(config.futureCutoff ?? '')}
+                onChange={handleConfigChange}
+                className="p-2 border rounded w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">Timezone</label>
+              <input
+                name="timeZone"
+                type="text"
+                value={config.timeZone || ''}
+                onChange={handleConfigChange}
+                placeholder="e.g., America/Los_Angeles"
+                className="p-2 border rounded w-full"
+              />
+            </div>
           </div>
           <div className="mt-4 overflow-auto">
             <table className="w-full text-sm border">
