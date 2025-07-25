@@ -157,8 +157,11 @@ const MollysCafeDashboard = () => {
       <main className="flex-1 p-8 space-y-8">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Reservations</h1>
-          <button className="bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600">
-            + New Reservation
+          <button
+            onClick={updateReservations}
+            className="bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600"
+          >
+            Update Reservations
           </button>
         </div>
 
@@ -226,10 +229,6 @@ const MollysCafeDashboard = () => {
             />
             <button onClick={goToNextDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Next</button>
           </div>
-
-          <button onClick={updateReservations} className="mt-6 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-            Update Reservations
-          </button>
         </section>
 
         {/* Config Section */}
@@ -303,7 +302,10 @@ const MollysCafeDashboard = () => {
               </table>
             </div>
           </div>
-          <button onClick={updateConfig} className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+          <button
+            onClick={updateConfig}
+            className="mt-4 bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600"
+          >
             Update Config
           </button>
         </section>
