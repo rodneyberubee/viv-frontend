@@ -70,26 +70,26 @@ export default function MollysCafe() {
       {/* Chat container */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
         {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`max-w-[75%] p-3 rounded-2xl shadow text-sm animate-fadeIn ${
-              msg.role === 'assistant'
-                ? 'bg-white self-start text-gray-900'
-                : 'bg-orange-100 self-end text-gray-900'
-            }`}
-            style={{
-              alignSelf: msg.role === 'assistant' ? 'flex-start' : 'flex-end',
-              transition: 'all 0.3s ease-in-out'
-            }}
-          >
-            {msg.content}
+          <div key={idx} className={`flex w-full ${msg.role === 'assistant' ? 'justify-start' : 'justify-end'}`}>
+            <div
+              className={`max-w-[75%] p-3 rounded-2xl shadow text-sm animate-fadeIn ${
+                msg.role === 'assistant'
+                  ? 'bg-white text-gray-900'
+                  : 'bg-orange-100 text-gray-900'
+              }`}
+              style={{
+                transition: 'all 0.3s ease-in-out'
+              }}
+            >
+              {msg.content}
+            </div>
           </div>
         ))}
 
         {/* Typing indicator */}
         {isLoading && (
-          <div className="flex items-center space-x-2 self-start bg-white rounded-2xl px-3 py-2 shadow animate-fadeIn">
-            <div className="flex space-x-1">
+          <div className="flex w-full justify-start">
+            <div className="bg-white rounded-2xl px-3 py-2 shadow animate-fadeIn flex space-x-1">
               <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
               <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
               <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
