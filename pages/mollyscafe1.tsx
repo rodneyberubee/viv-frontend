@@ -62,6 +62,13 @@ export default function MollysCafe() {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Chat container */}
@@ -74,7 +81,7 @@ export default function MollysCafe() {
                 ? 'bg-white self-start text-gray-900'
                 : 'bg-orange-100 self-end text-gray-900'
             }`}
-            style={{ alignSelf: msg.role === 'assistant' ? 'flex-start' : 'flex-end' }}
+            style={{ alignSelf: msg.role === 'assistant' ? 'flex-start' : 'flex-end', marginTop: '8px', marginBottom: '8px' }}
           >
             {msg.content}
           </div>
@@ -88,15 +95,26 @@ export default function MollysCafe() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Type a message..."
           className="flex-1 border rounded-full px-4 py-2 focus:outline-none"
         />
         <button
           onClick={sendMessage}
           disabled={isLoading}
-          className="bg-orange-500 text-white rounded-full w-12 h-12 flex items-center justify-center text-lg hover:bg-orange-600"
+          className="bg-orange-500 rounded-full w-12 h-12 flex items-center justify-center hover:bg-orange-600"
         >
-          !V
+          <span
+            className="text-orange-500"
+            style={{
+              transform: 'rotate(-90deg)',
+              textShadow: 'inset 0 1px 2px rgba(0,0,0,0.4)',
+              fontWeight: 'bold',
+              fontSize: '1.2rem'
+            }}
+          >
+            !V
+          </span>
         </button>
       </div>
     </div>
