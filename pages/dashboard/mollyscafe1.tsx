@@ -34,6 +34,8 @@ const MollysCafeDashboard = () => {
       const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/reservations');
       const data = await res.json();
       const reservationsFromServer = data.reservations || [];
+
+      // Add blank template for editing
       const blankRowTemplate = reservationsFromServer.length
         ? Object.keys(reservationsFromServer[0]).reduce((acc, key) => {
             acc[key] = key === 'date'
@@ -127,13 +129,30 @@ const MollysCafeDashboard = () => {
     return dt.isValid ? dt.toFormat('HH:mm') : '';
   };
 
+  // Filter out blank rows but include "blocked"
   const filteredReservations = reservations
-    .filter(r => DateTime.fromISO(r.date, { zone: restaurantTz }).hasSame(selectedDate, 'day'))
+    .filter(r => 
+      DateTime.fromISO(r.date, { zone: restaurantTz }).hasSame(selectedDate, 'day') &&
+      ((r.name && r.timeSlot) || r.status === 'blocked')
+    )
     .sort((a, b) => {
-      const t1 = DateTime.fromISO(`${a.date}T${a.timeSlot}`, { zone: restaurantTz });
-      const t2 = DateTime.fromISO(`${b.date}T${b.timeSlot}`, { zone: restaurantTz });
+      const t1 = DateTime.fromISO(`${a.date}T${a.timeSlot || '00:00'}`, { zone: restaurantTz });
+      const t2 = DateTime.fromISO(`${b.date}T${b.timeSlot || '00:00'}`, { zone: restaurantTz });
       return t1.toMillis() - t2.toMillis();
     });
+
+  // Metrics: exclude blanks, include blocked
+  const today = DateTime.now().setZone(restaurantTz).startOf('day');
+  const weekStart = today.startOf('week');
+  const monthStart = today.startOf('month');
+  const validForMetrics = reservations.filter(
+    r =>
+      ((r.name && r.timeSlot) || r.status === 'blocked') &&
+      DateTime.fromISO(r.date, { zone: restaurantTz }).isValid
+  );
+  const todayCount = validForMetrics.filter(r => DateTime.fromISO(r.date, { zone: restaurantTz }).hasSame(today, 'day')).length;
+  const weekCount = validForMetrics.filter(r => DateTime.fromISO(r.date, { zone: restaurantTz }) >= weekStart).length;
+  const monthCount = validForMetrics.filter(r => DateTime.fromISO(r.date, { zone: restaurantTz }) >= monthStart).length;
 
   const goToPrevDay = () => setSelectedDate(prev => prev.minus({ days: 1 }));
   const goToNextDay = () => setSelectedDate(prev => prev.plus({ days: 1 }));
@@ -168,15 +187,15 @@ const MollysCafeDashboard = () => {
         {/* Stat Cards */}
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-white rounded shadow p-4 text-center">
-            <p className="text-2xl font-bold">{filteredReservations.length}</p>
+            <p className="text-2xl font-bold">{todayCount}</p>
             <p className="text-gray-600">Today</p>
           </div>
           <div className="bg-white rounded shadow p-4 text-center">
-            <p className="text-2xl font-bold">0</p>
+            <p className="text-2xl font-bold">{weekCount}</p>
             <p className="text-gray-600">This Week</p>
           </div>
           <div className="bg-white rounded shadow p-4 text-center">
-            <p className="text-2xl font-bold">0</p>
+            <p className="text-2xl font-bold">{monthCount}</p>
             <p className="text-gray-600">This Month</p>
           </div>
         </div>
@@ -231,84 +250,73 @@ const MollysCafeDashboard = () => {
           </div>
         </section>
 
-        {/* Config Section (Updated Layout) */}
+        {/* Config Section (Compact Layout) */}
         <section className="bg-white rounded shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Restaurant Config</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left: Inputs */}
-            <div className="space-y-4">
-              <div>
-                <label className="block font-medium">Max Reservations</label>
-                <input
-                  name="maxReservations"
-                  type="number"
-                  value={String(config.maxReservations ?? '')}
-                  onChange={handleConfigChange}
-                  className="p-2 border rounded w-full"
-                />
-              </div>
-              <div>
-                <label className="block font-medium">Future Cutoff (days)</label>
-                <input
-                  name="futureCutoff"
-                  type="number"
-                  value={String(config.futureCutoff ?? '')}
-                  onChange={handleConfigChange}
-                  className="p-2 border rounded w-full"
-                />
-              </div>
-              <div>
-                <label className="block font-medium">Timezone</label>
-                <input
-                  name="timeZone"
-                  type="text"
-                  value={config.timeZone || ''}
-                  onChange={handleConfigChange}
-                  placeholder="e.g., America/Los_Angeles"
-                  className="p-2 border rounded w-full"
-                />
-              </div>
-            </div>
-            {/* Right: Schedule Table */}
-            <div className="lg:col-span-2 overflow-auto">
-              <table className="w-full text-sm border">
-                <thead>
-                  <tr>
-                    {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
-                      <th key={day} className="border px-2 py-1 capitalize">{day}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
-                      <td key={day + 'Open'} className="border px-1 py-1">
-                        <input
-                          type="time"
-                          name={`${day}Open`}
-                          value={config[`${day}Open`] || ''}
-                          onChange={handleConfigChange}
-                          className="w-full p-1 border rounded"
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
-                      <td key={day + 'Close'} className="border px-1 py-1">
-                        <input
-                          type="time"
-                          name={`${day}Close`}
-                          value={config[`${day}Close`] || ''}
-                          onChange={handleConfigChange}
-                          className="w-full p-1 border rounded"
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <input
+              name="maxReservations"
+              type="number"
+              value={String(config.maxReservations ?? '')}
+              onChange={handleConfigChange}
+              className="p-2 border rounded"
+              placeholder="Max Reservations"
+            />
+            <input
+              name="futureCutoff"
+              type="number"
+              value={String(config.futureCutoff ?? '')}
+              onChange={handleConfigChange}
+              className="p-2 border rounded"
+              placeholder="Future Cutoff (days)"
+            />
+            <input
+              name="timeZone"
+              type="text"
+              value={config.timeZone || ''}
+              onChange={handleConfigChange}
+              placeholder="Timezone"
+              className="p-2 border rounded"
+            />
+          </div>
+          <div className="mt-4 overflow-auto">
+            <table className="w-full text-sm border">
+              <thead>
+                <tr>
+                  {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
+                    <th key={day} className="border px-2 py-1 capitalize">{day}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
+                    <td key={day + 'Open'} className="border px-1 py-1">
+                      <input
+                        type="time"
+                        name={`${day}Open`}
+                        value={config[`${day}Open`] || ''}
+                        onChange={handleConfigChange}
+                        className="w-full p-1 border rounded"
+                      />
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
+                    <td key={day + 'Close'} className="border px-1 py-1">
+                      <input
+                        type="time"
+                        name={`${day}Close`}
+                        value={config[`${day}Close`] || ''}
+                        onChange={handleConfigChange}
+                        className="w-full p-1 border rounded"
+                      />
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
           </div>
           <div className="flex justify-end">
             <button
