@@ -80,7 +80,7 @@ export default function MollysCafe() {
               style={{
                 transition: 'all 0.3s ease-in-out',
                 fontFamily: `'SF Pro Rounded', 'Arial Rounded MT', 'Helvetica Neue', sans-serif`,
-                fontWeight: 400 // Reduced to friendlier mid-light weight (375–425 range)
+                fontWeight: 400 // Light-friendly weight for chat text
               }}
             >
               {msg.content}
@@ -118,7 +118,7 @@ export default function MollysCafe() {
         <button
           onClick={sendMessage}
           disabled={isLoading}
-          className="bg-orange-500 text-white rounded-full w-12 h-12 flex items-center justify-center text-2xl hover:bg-orange-600 transform rotate-90"
+          className="bg-orange-500 text-white rounded-full w-12 h-12 flex items-center justify-center text-2xl hover:bg-orange-600 transform rotate-180"
           style={{
             fontFamily: `'SF Pro Rounded', 'Arial Rounded MT', 'Helvetica Neue', sans-serif`,
             fontWeight: 425
