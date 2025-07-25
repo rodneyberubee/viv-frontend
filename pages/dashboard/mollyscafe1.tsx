@@ -151,6 +151,7 @@ const MollysCafeDashboard = () => {
   };
 
   const reservationHidden = ['id', 'rawConfirmationCode', 'dateFormatted', 'notes'];
+  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
   const format24hr = (time: string) => {
     if (!time) return '';
@@ -168,7 +169,6 @@ const MollysCafeDashboard = () => {
       return t1.toMillis() - t2.toMillis();
     });
 
-  // Navigation
   const goToPrevDay = () => setSelectedDate(prev => prev.minus({ days: 1 }));
   const goToNextDay = () => setSelectedDate(prev => prev.plus({ days: 1 }));
   const onDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -191,8 +191,81 @@ const MollysCafeDashboard = () => {
         <button onClick={goToNextDay} className="px-4 py-2 bg-gray-200 rounded">Next</button>
       </div>
 
-      {/* Config Section */}
-      {/* (unchanged from your code) */}
+      {/* Restaurant Config Section */}
+      <section className="bg-white p-6 rounded shadow">
+        <h2 className="text-xl font-semibold mb-4">Restaurant Config</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block font-medium">Max Reservations</label>
+            <input
+              name="maxReservations"
+              type="number"
+              value={String(config.maxReservations ?? '')}
+              onChange={handleConfigChange}
+              className="w-full p-2 border rounded"
+            />
+            <label className="block font-medium mt-4">Future Cutoff (days)</label>
+            <input
+              name="futureCutoff"
+              type="number"
+              value={String(config.futureCutoff ?? '')}
+              onChange={handleConfigChange}
+              className="w-full p-2 border rounded"
+            />
+            <label className="block font-medium mt-4">Timezone</label>
+            <input
+              name="timeZone"
+              type="text"
+              value={config.timeZone || ''}
+              onChange={handleConfigChange}
+              placeholder="e.g., America/Los_Angeles"
+              className="w-full p-2 border rounded"
+            />
+          </div>
+          <div className="overflow-auto">
+            <table className="w-full text-sm border">
+              <thead>
+                <tr>
+                  {days.map(day => (
+                    <th key={day} className="border px-2 py-1 capitalize">{day}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  {days.map(day => (
+                    <td key={day + 'Open'} className="border px-1 py-1">
+                      <input
+                        type="time"
+                        name={`${day}Open`}
+                        value={config[`${day}Open`] || ''}
+                        onChange={handleConfigChange}
+                        className="w-full p-1 border rounded"
+                      />
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  {days.map(day => (
+                    <td key={day + 'Close'} className="border px-1 py-1">
+                      <input
+                        type="time"
+                        name={`${day}Close`}
+                        value={config[`${day}Close`] || ''}
+                        onChange={handleConfigChange}
+                        className="w-full p-1 border rounded"
+                      />
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <button onClick={updateConfig} className="mt-4 bg-blue-600 text-white px-4 py-2 rounded">
+          Update Config
+        </button>
+      </section>
 
       {/* Reservations */}
       <section className="bg-white p-6 rounded shadow">
