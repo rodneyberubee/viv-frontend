@@ -7,7 +7,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "dayjs": "^1.11.13",
+    "luxon": "^3.7.1",
     "next": "latest",
     "openai": "^5.8.2",
     "react": "latest",
