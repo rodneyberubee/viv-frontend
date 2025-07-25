@@ -15,7 +15,7 @@ export default function MollysCafe() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isLoading]);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -52,7 +52,10 @@ export default function MollysCafe() {
       const speakResult = await speakResponse.json();
       const spokenResponse = speakResult.spokenResponse;
 
-      setMessages(prev => [...prev, { role: 'assistant', content: spokenResponse || '⚠️ Viv had trouble replying.' }]);
+      setMessages(prev => [
+        ...prev,
+        { role: 'assistant', content: spokenResponse || '⚠️ Viv had trouble replying.' }
+      ]);
 
       setLastAction({ type: aiData.type, confirmationCode: aiData.confirmationCode });
     } catch (error) {
@@ -65,20 +68,35 @@ export default function MollysCafe() {
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Chat container */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
         {messages.map((msg, idx) => (
           <div
             key={idx}
-            className={`max-w-[75%] p-3 rounded-lg shadow text-sm ${
+            className={`max-w-[75%] p-3 rounded-2xl shadow text-sm animate-fadeIn ${
               msg.role === 'assistant'
                 ? 'bg-white self-start text-gray-900'
                 : 'bg-orange-100 self-end text-gray-900'
             }`}
-            style={{ alignSelf: msg.role === 'assistant' ? 'flex-start' : 'flex-end' }}
+            style={{
+              alignSelf: msg.role === 'assistant' ? 'flex-start' : 'flex-end',
+              transition: 'all 0.3s ease-in-out'
+            }}
           >
             {msg.content}
           </div>
         ))}
+
+        {/* Typing indicator */}
+        {isLoading && (
+          <div className="flex items-center space-x-2 self-start bg-white rounded-2xl px-3 py-2 shadow animate-fadeIn">
+            <div className="flex space-x-1">
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+            </div>
+          </div>
+        )}
+
         <div ref={chatEndRef} />
       </div>
 
@@ -99,6 +117,24 @@ export default function MollysCafe() {
           !V
         </button>
       </div>
+
+      {/* Animations */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(5px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes bounce {
+          0%, 80%, 100% { transform: scale(0); }
+          40% { transform: scale(1); }
+        }
+        .animate-bounce {
+          animation: bounce 1.4s infinite ease-in-out;
+        }
+      `}</style>
     </div>
   );
 }
