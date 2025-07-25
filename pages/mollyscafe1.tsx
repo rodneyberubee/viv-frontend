@@ -59,7 +59,7 @@ export default function MollysCafe() {
 
       // Trigger dashboard update if reservation completed
       if (aiData.type && aiData.type.toLowerCase().includes('complete')) {
-        window.dispatchEvent(new CustomEvent('reservationUpdated', { detail: { confirmationCode: aiData.confirmationCode } }));
+        window.dispatchEvent(new CustomEvent('reservationUpdate', { detail: { confirmationCode: aiData.confirmationCode } }));
       }
 
       setLastAction({ type: aiData.type, confirmationCode: aiData.confirmationCode });
