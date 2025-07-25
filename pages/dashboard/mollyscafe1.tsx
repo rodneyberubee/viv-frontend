@@ -19,7 +19,6 @@ const MollysCafeDashboard = () => {
     DateTime.now().setZone('America/Los_Angeles').startOf('day')
   );
 
-  // Fetch config
   async function fetchConfig() {
     try {
       const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/config');
@@ -30,7 +29,6 @@ const MollysCafeDashboard = () => {
     }
   }
 
-  // Fetch reservations
   async function fetchReservations() {
     try {
       const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/reservations');
@@ -52,8 +50,7 @@ const MollysCafeDashboard = () => {
             status: '', 
             confirmationCode: '' 
           };
-      const padded = [...reservationsFromServer, blankRowTemplate];
-      setReservations(padded);
+      setReservations([...reservationsFromServer, blankRowTemplate]);
     } catch (err) {
       console.error('[ERROR] Fetching reservations failed:', err);
     }
@@ -148,17 +145,22 @@ const MollysCafeDashboard = () => {
     <div className="flex min-h-screen bg-gray-100">
       {/* Sidebar */}
       <aside className="w-64 bg-white shadow-md p-6 space-y-6">
-        <h2 className="text-2xl font-bold">Dashboard</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
         <nav className="space-y-4">
-          <a className="block font-medium text-blue-600">Reservations</a>
-          <a className="block text-gray-600">Availability</a>
-          <a className="block text-gray-600">Settings</a>
+          <a className="block font-medium text-orange-500">Reservations</a>
+          <a className="block text-gray-600 hover:text-orange-500">Availability</a>
+          <a className="block text-gray-600 hover:text-orange-500">Settings</a>
         </nav>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 p-8 space-y-8">
-        <h1 className="text-3xl font-bold">Reservations</h1>
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold">Reservations</h1>
+          <button className="bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600">
+            + New Reservation
+          </button>
+        </div>
 
         {/* Stat Cards */}
         <div className="grid grid-cols-3 gap-4">
@@ -181,30 +183,30 @@ const MollysCafeDashboard = () => {
           <h2 className="text-xl font-semibold mb-4">
             Reservations for {selectedDate.toFormat('MMMM dd, yyyy')}
           </h2>
-          <table className="w-full text-sm border">
-            <thead className="bg-gray-100">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
               <tr>
                 {filteredReservations.length > 0 &&
                   Object.keys(filteredReservations[0])
                     .filter((key) => !reservationHidden.includes(key))
                     .map((key) => (
-                      <th key={key} className="border px-2 py-1 text-left capitalize">{key}</th>
+                      <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium capitalize">{key}</th>
                     ))}
               </tr>
             </thead>
             <tbody>
               {filteredReservations.map((res, i) => (
-                <tr key={res.id || i} className="border-t">
+                <tr key={res.id || i} className="border-t hover:bg-gray-50">
                   {Object.entries(res)
                     .filter(([key]) => !reservationHidden.includes(key))
                     .map(([key, val]) => (
-                      <td key={key} className="border px-2 py-1">
+                      <td key={key} className="px-3 py-2">
                         <input
                           type={key === 'timeSlot' ? 'time' : key === 'date' ? 'date' : 'text'}
                           name={key}
                           value={key === 'timeSlot' ? format24hr(String(val)) : String(val ?? '')}
                           onChange={(e) => handleReservationEdit(e, res.id, i)}
-                          className="w-full p-1 border rounded"
+                          className="w-full p-1 rounded border border-transparent focus:border-orange-500 focus:ring focus:ring-orange-200"
                         />
                       </td>
                     ))}
@@ -215,94 +217,18 @@ const MollysCafeDashboard = () => {
 
           {/* Date Navigation */}
           <div className="flex items-center justify-center space-x-4 mt-4">
-            <button onClick={goToPrevDay} className="px-4 py-2 bg-gray-200 rounded">Prev</button>
+            <button onClick={goToPrevDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Prev</button>
             <input
               type="date"
               value={selectedDate.toFormat('yyyy-MM-dd')}
               onChange={onDateChange}
               className="p-2 border rounded"
             />
-            <button onClick={goToNextDay} className="px-4 py-2 bg-gray-200 rounded">Next</button>
+            <button onClick={goToNextDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Next</button>
           </div>
 
-          <button onClick={updateReservations} className="mt-4 bg-green-600 text-white px-4 py-2 rounded">
+          <button onClick={updateReservations} className="mt-6 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
             Update Reservations
-          </button>
-        </section>
-
-        {/* Config Section */}
-        <section className="bg-white rounded shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Restaurant Config</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-medium">Max Reservations</label>
-              <input
-                name="maxReservations"
-                type="number"
-                value={String(config.maxReservations ?? '')}
-                onChange={handleConfigChange}
-                className="w-full p-2 border rounded"
-              />
-              <label className="block font-medium mt-4">Future Cutoff (days)</label>
-              <input
-                name="futureCutoff"
-                type="number"
-                value={String(config.futureCutoff ?? '')}
-                onChange={handleConfigChange}
-                className="w-full p-2 border rounded"
-              />
-              <label className="block font-medium mt-4">Timezone</label>
-              <input
-                name="timeZone"
-                type="text"
-                value={config.timeZone || ''}
-                onChange={handleConfigChange}
-                placeholder="e.g., America/Los_Angeles"
-                className="w-full p-2 border rounded"
-              />
-            </div>
-            <div className="overflow-auto">
-              <table className="w-full text-sm border">
-                <thead>
-                  <tr>
-                    {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
-                      <th key={day} className="border px-2 py-1 capitalize">{day}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
-                      <td key={day + 'Open'} className="border px-1 py-1">
-                        <input
-                          type="time"
-                          name={`${day}Open`}
-                          value={config[`${day}Open`] || ''}
-                          onChange={handleConfigChange}
-                          className="w-full p-1 border rounded"
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
-                      <td key={day + 'Close'} className="border px-1 py-1">
-                        <input
-                          type="time"
-                          name={`${day}Close`}
-                          value={config[`${day}Close`] || ''}
-                          onChange={handleConfigChange}
-                          className="w-full p-1 border rounded"
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <button onClick={updateConfig} className="mt-4 bg-blue-600 text-white px-4 py-2 rounded">
-            Update Config
           </button>
         </section>
       </main>
