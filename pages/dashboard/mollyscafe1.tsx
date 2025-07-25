@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { DateTime } from 'luxon';
 
-// Simple global flag for updates
+// Event dispatcher utility
 export const reservationUpdateEvent = {
-  flag: 0,
-  setFlag(val: number) {
-    this.flag = val;
-    window.dispatchEvent(new CustomEvent('reservationUpdate', { detail: val }));
+  setFlag() {
+    const timestamp = Date.now();
+    console.log('[DEBUG] Dispatching reservationUpdate event:', timestamp);
+    window.dispatchEvent(new CustomEvent('reservationUpdate', { detail: timestamp }));
   }
 };
 
@@ -70,7 +70,7 @@ const MollysCafeDashboard = () => {
             status: '', 
             confirmationCode: '' 
           };
-      setReservations([...reservationsFromServer, blankRowTemplate]);
+      setReservations([...reservationsFromServer, blankRowTemplate]); // force new array reference
     } catch (err) {
       console.error('[ERROR] Fetching reservations failed:', err);
     }
@@ -84,10 +84,8 @@ const MollysCafeDashboard = () => {
   // Listen for reservation update events
   useEffect(() => {
     const handler = (e: any) => {
-      if (e.detail === 1) {
-        fetchReservations();
-        reservationUpdateEvent.setFlag(0); // reset flag
-      }
+      console.log('[DEBUG] Dashboard caught reservationUpdate event:', e.detail);
+      fetchReservations();
     };
     window.addEventListener('reservationUpdate', handler);
     return () => window.removeEventListener('reservationUpdate', handler);
@@ -159,7 +157,6 @@ const MollysCafeDashboard = () => {
     return dt.isValid ? dt.toFormat('HH:mm') : '';
   };
 
-  // Filter out blank rows but include "blocked"
   const filteredReservations = reservations
     .filter(r => 
       DateTime.fromISO(r.date, { zone: restaurantTz }).hasSame(selectedDate, 'day') &&
@@ -171,7 +168,6 @@ const MollysCafeDashboard = () => {
       return t1.toMillis() - t2.toMillis();
     });
 
-  // Metrics: exclude blanks, include blocked only within correct range
   const today = DateTime.now().setZone(restaurantTz).startOf('day');
   const weekStart = today.startOf('week');
   const weekEnd = today.endOf('week');
@@ -202,7 +198,6 @@ const MollysCafeDashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
       <aside className="w-64 bg-white shadow-md p-6 space-y-6">
         <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
         <nav className="space-y-4">
@@ -212,173 +207,8 @@ const MollysCafeDashboard = () => {
         </nav>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 p-8 space-y-8">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Reservations</h1>
           <button
-            onClick={updateReservations}
-            className="bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600"
-          >
-            Update Reservations
-          </button>
-        </div>
-
-        {/* Stat Cards */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white rounded shadow p-4 text-center">
-            <p className="text-2xl font-bold">{todayCount}</p>
-            <p className="text-gray-600">Today</p>
-          </div>
-          <div className="bg-white rounded shadow p-4 text-center">
-            <p className="text-2xl font-bold">{weekCount}</p>
-            <p className="text-gray-600">This Week</p>
-          </div>
-          <div className="bg-white rounded shadow p-4 text-center">
-            <p className="text-2xl font-bold">{monthCount}</p>
-            <p className="text-gray-600">This Month</p>
-          </div>
-        </div>
-
-        {/* Reservations Table */}
-        <section className="bg-white rounded shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">
-            Reservations for {selectedDate.toFormat('MMMM dd, yyyy')}
-          </h2>
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                {filteredReservations.length > 0 &&
-                  Object.keys(filteredReservations[0])
-                    .filter((key) => !reservationHidden.includes(key))
-                    .map((key) => (
-                      <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
-                        {headerLabels[key] || key}
-                      </th>
-                    ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredReservations.map((res, i) => (
-                <tr key={res.id || i} className="border-t hover:bg-gray-50">
-                  {Object.entries(res)
-                    .filter(([key]) => !reservationHidden.includes(key))
-                    .map(([key, val]) => (
-                      <td key={key} className="px-3 py-2">
-                        <input
-                          type={key === 'timeSlot' ? 'time' : key === 'date' ? 'date' : 'text'}
-                          name={key}
-                          value={key === 'timeSlot' ? format24hr(String(val)) : String(val ?? '')}
-                          onChange={(e) => handleReservationEdit(e, res.id, i)}
-                          className="w-full p-1 rounded border border-transparent focus:border-orange-500 focus:ring focus:ring-orange-200"
-                        />
-                      </td>
-                    ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Date Navigation */}
-          <div className="flex items-center justify-center space-x-4 mt-4">
-            <button onClick={goToPrevDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Prev</button>
-            <input
-              type="date"
-              value={selectedDate.toFormat('yyyy-MM-dd')}
-              onChange={onDateChange}
-              className="p-2 border rounded"
-            />
-            <button onClick={goToNextDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Next</button>
-          </div>
-        </section>
-
-        {/* Config Section (Compact Layout with Labels) */}
-        <section className="bg-white rounded shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Restaurant Config</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Max Reservations</label>
-              <input
-                name="maxReservations"
-                type="number"
-                value={String(config.maxReservations ?? '')}
-                onChange={handleConfigChange}
-                className="p-2 border rounded w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Future Cutoff (days)</label>
-              <input
-                name="futureCutoff"
-                type="number"
-                value={String(config.futureCutoff ?? '')}
-                onChange={handleConfigChange}
-                className="p-2 border rounded w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Timezone</label>
-              <input
-                name="timeZone"
-                type="text"
-                value={config.timeZone || ''}
-                onChange={handleConfigChange}
-                placeholder="e.g., America/Los_Angeles"
-                className="p-2 border rounded w-full"
-              />
-            </div>
-          </div>
-          <div className="mt-4 overflow-auto">
-            <table className="w-full text-sm border">
-              <thead>
-                <tr>
-                  {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
-                    <th key={day} className="border px-2 py-1 capitalize">{day}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
-                    <td key={day + 'Open'} className="border px-1 py-1">
-                      <input
-                        type="time"
-                        name={`${day}Open`}
-                        value={config[`${day}Open`] || ''}
-                        onChange={handleConfigChange}
-                        className="w-full p-1 border rounded"
-                      />
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
-                    <td key={day + 'Close'} className="border px-1 py-1">
-                      <input
-                        type="time"
-                        name={`${day}Close`}
-                        value={config[`${day}Close`] || ''}
-                        onChange={handleConfigChange}
-                        className="w-full p-1 border rounded"
-                      />
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div className="flex justify-end">
-            <button
-              onClick={updateConfig}
-              className="mt-4 bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600"
-            >
-              Update Config
-            </button>
-          </div>
-        </section>
-      </main>
-    </div>
-  );
-};
-
-export default MollysCafeDashboard;
+            onC
