@@ -57,6 +57,11 @@ export default function MollysCafe() {
         { role: 'assistant', content: spokenResponse || '⚠️ Viv had trouble replying.' }
       ]);
 
+      // Trigger dashboard update if reservation completed
+      if (aiData.type && aiData.type.toLowerCase().includes('complete')) {
+        window.dispatchEvent(new CustomEvent('reservationUpdated', { detail: { confirmationCode: aiData.confirmationCode } }));
+      }
+
       setLastAction({ type: aiData.type, confirmationCode: aiData.confirmationCode });
     } catch (error) {
       setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Sorry, something went wrong.' }]);
@@ -80,7 +85,7 @@ export default function MollysCafe() {
               style={{
                 transition: 'all 0.3s ease-in-out',
                 fontFamily: `'SF Pro Rounded', 'Arial Rounded MT', 'Helvetica Neue', sans-serif`,
-                fontWeight: 400 // Light-friendly weight for chat text
+                fontWeight: 400
               }}
             >
               {msg.content}
