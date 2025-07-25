@@ -235,32 +235,38 @@ const MollysCafeDashboard = () => {
         <section className="bg-white rounded shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Restaurant Config</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-medium">Max Reservations</label>
-              <input
-                name="maxReservations"
-                type="number"
-                value={String(config.maxReservations ?? '')}
-                onChange={handleConfigChange}
-                className="w-full p-2 border rounded"
-              />
-              <label className="block font-medium mt-4">Future Cutoff (days)</label>
-              <input
-                name="futureCutoff"
-                type="number"
-                value={String(config.futureCutoff ?? '')}
-                onChange={handleConfigChange}
-                className="w-full p-2 border rounded"
-              />
-              <label className="block font-medium mt-4">Timezone</label>
-              <input
-                name="timeZone"
-                type="text"
-                value={config.timeZone || ''}
-                onChange={handleConfigChange}
-                placeholder="e.g., America/Los_Angeles"
-                className="w-full p-2 border rounded"
-              />
+            <div className="space-y-4">
+              <div>
+                <label className="block font-medium">Max Reservations</label>
+                <input
+                  name="maxReservations"
+                  type="number"
+                  value={String(config.maxReservations ?? '')}
+                  onChange={handleConfigChange}
+                  className="p-2 border rounded w-40"
+                />
+              </div>
+              <div>
+                <label className="block font-medium">Future Cutoff (days)</label>
+                <input
+                  name="futureCutoff"
+                  type="number"
+                  value={String(config.futureCutoff ?? '')}
+                  onChange={handleConfigChange}
+                  className="p-2 border rounded w-40"
+                />
+              </div>
+              <div>
+                <label className="block font-medium">Timezone</label>
+                <input
+                  name="timeZone"
+                  type="text"
+                  value={config.timeZone || ''}
+                  onChange={handleConfigChange}
+                  placeholder="e.g., America/Los_Angeles"
+                  className="p-2 border rounded w-60"
+                />
+              </div>
             </div>
             <div className="overflow-auto">
               <table className="w-full text-sm border">
