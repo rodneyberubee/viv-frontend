@@ -231,6 +231,82 @@ const MollysCafeDashboard = () => {
             Update Reservations
           </button>
         </section>
+
+        {/* Config Section */}
+        <section className="bg-white rounded shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Restaurant Config</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block font-medium">Max Reservations</label>
+              <input
+                name="maxReservations"
+                type="number"
+                value={String(config.maxReservations ?? '')}
+                onChange={handleConfigChange}
+                className="w-full p-2 border rounded"
+              />
+              <label className="block font-medium mt-4">Future Cutoff (days)</label>
+              <input
+                name="futureCutoff"
+                type="number"
+                value={String(config.futureCutoff ?? '')}
+                onChange={handleConfigChange}
+                className="w-full p-2 border rounded"
+              />
+              <label className="block font-medium mt-4">Timezone</label>
+              <input
+                name="timeZone"
+                type="text"
+                value={config.timeZone || ''}
+                onChange={handleConfigChange}
+                placeholder="e.g., America/Los_Angeles"
+                className="w-full p-2 border rounded"
+              />
+            </div>
+            <div className="overflow-auto">
+              <table className="w-full text-sm border">
+                <thead>
+                  <tr>
+                    {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
+                      <th key={day} className="border px-2 py-1 capitalize">{day}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
+                      <td key={day + 'Open'} className="border px-1 py-1">
+                        <input
+                          type="time"
+                          name={`${day}Open`}
+                          value={config[`${day}Open`] || ''}
+                          onChange={handleConfigChange}
+                          className="w-full p-1 border rounded"
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
+                      <td key={day + 'Close'} className="border px-1 py-1">
+                        <input
+                          type="time"
+                          name={`${day}Close`}
+                          value={config[`${day}Close`] || ''}
+                          onChange={handleConfigChange}
+                          className="w-full p-1 border rounded"
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <button onClick={updateConfig} className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            Update Config
+          </button>
+        </section>
       </main>
     </div>
   );
