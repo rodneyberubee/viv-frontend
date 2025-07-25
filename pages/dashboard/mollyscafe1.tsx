@@ -168,7 +168,7 @@ const MollysCafeDashboard = () => {
   const monthEnd = today.endOf('month');
   const validForMetrics = reservations.filter(
     r =>
-      ((r.name && r.timeSlot) || r.status === 'blocked') &&
+      r.status?.toLowerCase() === 'confirmed' &&
       DateTime.fromISO(r.date, { zone: restaurantTz }).isValid
   );
   const todayCount = validForMetrics.filter(r =>
