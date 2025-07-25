@@ -231,10 +231,11 @@ const MollysCafeDashboard = () => {
           </div>
         </section>
 
-        {/* Config Section */}
+        {/* Config Section (Updated Layout) */}
         <section className="bg-white rounded shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Restaurant Config</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left: Inputs */}
             <div className="space-y-4">
               <div>
                 <label className="block font-medium">Max Reservations</label>
@@ -243,7 +244,7 @@ const MollysCafeDashboard = () => {
                   type="number"
                   value={String(config.maxReservations ?? '')}
                   onChange={handleConfigChange}
-                  className="p-2 border rounded w-40"
+                  className="p-2 border rounded w-full"
                 />
               </div>
               <div>
@@ -253,7 +254,7 @@ const MollysCafeDashboard = () => {
                   type="number"
                   value={String(config.futureCutoff ?? '')}
                   onChange={handleConfigChange}
-                  className="p-2 border rounded w-40"
+                  className="p-2 border rounded w-full"
                 />
               </div>
               <div>
@@ -264,11 +265,12 @@ const MollysCafeDashboard = () => {
                   value={config.timeZone || ''}
                   onChange={handleConfigChange}
                   placeholder="e.g., America/Los_Angeles"
-                  className="p-2 border rounded w-60"
+                  className="p-2 border rounded w-full"
                 />
               </div>
             </div>
-            <div className="overflow-auto">
+            {/* Right: Schedule Table */}
+            <div className="lg:col-span-2 overflow-auto">
               <table className="w-full text-sm border">
                 <thead>
                   <tr>
@@ -308,12 +310,14 @@ const MollysCafeDashboard = () => {
               </table>
             </div>
           </div>
-          <button
-            onClick={updateConfig}
-            className="mt-4 bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600"
-          >
-            Update Config
-          </button>
+          <div className="flex justify-end">
+            <button
+              onClick={updateConfig}
+              className="mt-4 bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600"
+            >
+              Update Config
+            </button>
+          </div>
         </section>
       </main>
     </div>
