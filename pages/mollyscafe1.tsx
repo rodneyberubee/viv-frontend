@@ -66,19 +66,20 @@ export default function MollysCafe() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-gray-50 font-sans">
       {/* Chat container */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex w-full ${msg.role === 'assistant' ? 'justify-start' : 'justify-end'}`}>
             <div
-              className={`max-w-[75%] p-3 rounded-2xl shadow text-sm animate-fadeIn ${
+              className={`max-w-[75%] p-3 rounded-2xl shadow text-[16px] leading-relaxed animate-fadeIn ${
                 msg.role === 'assistant'
                   ? 'bg-white text-gray-900'
                   : 'bg-orange-100 text-gray-900'
               }`}
               style={{
-                transition: 'all 0.3s ease-in-out'
+                transition: 'all 0.3s ease-in-out',
+                fontFamily: `'SF Pro Rounded', 'Arial Rounded MT Bold', 'Helvetica Neue', sans-serif`
               }}
             >
               {msg.content}
@@ -107,12 +108,18 @@ export default function MollysCafe() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Type a message..."
-          className="flex-1 border rounded-full px-4 py-2 focus:outline-none"
+          className="flex-1 border rounded-full px-4 py-2 focus:outline-none text-[16px]"
+          style={{
+            fontFamily: `'SF Pro Rounded', 'Arial Rounded MT Bold', 'Helvetica Neue', sans-serif`
+          }}
         />
         <button
           onClick={sendMessage}
           disabled={isLoading}
-          className="bg-orange-500 text-white rounded-full w-12 h-12 flex items-center justify-center text-lg hover:bg-orange-600"
+          className="bg-orange-500 text-white rounded-full w-12 h-12 flex items-center justify-center text-2xl hover:bg-orange-600 transform rotate-12"
+          style={{
+            fontFamily: `'SF Pro Rounded', 'Arial Rounded MT Bold', 'Helvetica Neue', sans-serif`
+          }}
         >
           !V
         </button>
