@@ -1,15 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { DateTime } from 'luxon';
 
-// Event dispatcher utility
-export const reservationUpdateEvent = {
-  setFlag() {
-    const timestamp = Date.now();
-    console.log('[DEBUG] Dispatching reservationUpdate event:', timestamp);
-    window.dispatchEvent(new CustomEvent('reservationUpdate', { detail: timestamp }));
-  }
-};
-
 type Config = {
   maxReservations: number;
   futureCutoff: number;
@@ -70,7 +61,7 @@ const MollysCafeDashboard = () => {
             status: '', 
             confirmationCode: '' 
           };
-      setReservations([...reservationsFromServer, blankRowTemplate]); // force new array reference
+      setReservations([...reservationsFromServer, blankRowTemplate]); // new array reference
     } catch (err) {
       console.error('[ERROR] Fetching reservations failed:', err);
     }
@@ -81,14 +72,16 @@ const MollysCafeDashboard = () => {
     fetchReservations();
   }, [config.timeZone, selectedDate]);
 
-  // Listen for reservation update events
+  // Listen for BroadcastChannel events
   useEffect(() => {
-    const handler = (e: any) => {
-      console.log('[DEBUG] Dashboard caught reservationUpdate event:', e.detail);
-      fetchReservations();
+    const bc = new BroadcastChannel('reservations');
+    bc.onmessage = (e) => {
+      if (e.data.type === 'reservationUpdate') {
+        console.log('[DEBUG] Dashboard received reservationUpdate broadcast:', e.data.timestamp);
+        fetchReservations();
+      }
     };
-    window.addEventListener('reservationUpdate', handler);
-    return () => window.removeEventListener('reservationUpdate', handler);
+    return () => bc.close();
   }, []);
 
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
