@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { DateTime } from 'luxon';
+import { loadStripe } from '@stripe/stripe-js';
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ''); // Add your key in .env
 
 const usTimeZones = [
   'America/New_York',
@@ -15,13 +18,13 @@ const usTimeZones = [
 const parseTimeInput = (input: string): string | null => {
   if (!input) return '';
   const cleaned = input.trim().toUpperCase().replace(/\./g, '').replace(/\s+/g, '');
-  const withSpace = cleaned.replace(/(AM|PM)$/, ' $1'); // add space before AM/PM
-  const formats = ['h:mm a', 'h a', 'H:mm', 'H']; // supported formats
+  const withSpace = cleaned.replace(/(AM|PM)$/, ' $1');
+  const formats = ['h:mm a', 'h a', 'H:mm', 'H'];
   for (const fmt of formats) {
     const dt = DateTime.fromFormat(withSpace, fmt);
     if (dt.isValid) return dt.toFormat('HH:mm');
   }
-  return null; // invalid
+  return null;
 };
 
 const AccountCreation = () => {
@@ -46,10 +49,35 @@ const AccountCreation = () => {
     sundayOpen: '',
     sundayClose: '',
   });
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCheckout = async () => {
+    setLoading(true);
+    try {
+      const stripe = await stripePromise;
+      if (!stripe) throw new Error('Stripe failed to initialize');
+
+      const res = await fetch('https://api.vivaitable.com/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email }),
+      });
+
+      const session = await res.json();
+      if (!session?.id) throw new Error('Failed to create checkout session');
+
+      await stripe.redirectToCheckout({ sessionId: session.id });
+    } catch (err) {
+      console.error('[ERROR] Stripe checkout failed:', err);
+      alert('Failed to start checkout. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const createAccount = async () => {
@@ -108,12 +136,21 @@ const AccountCreation = () => {
       <main className="flex-1 p-8 space-y-8">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Create New Restaurant Account</h1>
-          <button
-            onClick={createAccount}
-            className="bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600"
-          >
-            Create Account
-          </button>
+          <div className="space-x-2">
+            <button
+              onClick={handleCheckout}
+              disabled={loading}
+              className="bg-green-500 text-white px-4 py-2 rounded shadow hover:bg-green-600"
+            >
+              {loading ? 'Redirecting...' : 'Pay & Continue'}
+            </button>
+            <button
+              onClick={createAccount}
+              className="bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600"
+            >
+              Create Account
+            </button>
+          </div>
         </div>
 
         <section className="bg-white rounded shadow p-6 space-y-6">
