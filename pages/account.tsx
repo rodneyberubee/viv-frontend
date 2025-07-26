@@ -1,41 +1,28 @@
 import React, { useState } from 'react';
+import { DateTime } from 'luxon';
 
 const usTimeZones = [
-  'America/New_York',       // Eastern
-  'America/Detroit',        // Eastern (Michigan)
-  'America/Kentucky/Louisville', 
-  'America/Kentucky/Monticello',
-  'America/Indiana/Indianapolis',
-  'America/Indiana/Vincennes',
-  'America/Indiana/Winamac',
-  'America/Indiana/Marengo',
-  'America/Indiana/Petersburg',
-  'America/Indiana/Vevay',
-  'America/Chicago',        // Central
-  'America/Menominee', 
-  'America/North_Dakota/Center',
-  'America/North_Dakota/New_Salem',
-  'America/North_Dakota/Beulah',
-  'America/Denver',         // Mountain
-  'America/Boise', 
-  'America/Phoenix',        // Arizona
-  'America/Los_Angeles',    // Pacific
-  'America/Anchorage',      // Alaska
-  'America/Juneau',
-  'America/Sitka',
-  'America/Metlakatla',
-  'America/Yakutat',
-  'America/Nome',
-  'America/Adak',           // Aleutian
-  'Pacific/Honolulu',       // Hawaii
-  'America/Port_of_Spain',  // Puerto Rico (Atlantic)
-  'America/Puerto_Rico',
-  'America/Virgin',         // USVI
-  'Pacific/Guam',           // Guam
-  'Pacific/Saipan',         // Northern Mariana Islands
-  'Pacific/Pago_Pago',      // American Samoa
-  'Pacific/Midway',         // Midway Islands
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Phoenix',
+  'America/Los_Angeles',
+  'America/Anchorage',
+  'Pacific/Honolulu',
 ];
+
+// Helper: Parse flexible time input to HH:mm or return null
+const parseTimeInput = (input: string): string | null => {
+  if (!input) return '';
+  const cleaned = input.trim().toUpperCase().replace(/\./g, '').replace(/\s+/g, '');
+  const withSpace = cleaned.replace(/(AM|PM)$/, ' $1'); // add space before AM/PM
+  const formats = ['h:mm a', 'h a', 'H:mm', 'H']; // supported formats
+  for (const fmt of formats) {
+    const dt = DateTime.fromFormat(withSpace, fmt);
+    if (dt.isValid) return dt.toFormat('HH:mm');
+  }
+  return null; // invalid
+};
 
 const AccountCreation = () => {
   const [form, setForm] = useState({
@@ -66,11 +53,35 @@ const AccountCreation = () => {
   };
 
   const createAccount = async () => {
+    // Parse and validate time fields
+    const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+    const parsedForm = { ...form };
+    for (const day of days) {
+      const openKey = `${day}Open`;
+      const closeKey = `${day}Close`;
+      if (parsedForm[openKey]) {
+        const parsed = parseTimeInput(parsedForm[openKey]);
+        if (!parsed) {
+          alert(`Invalid time format for ${day} open: ${parsedForm[openKey]}`);
+          return;
+        }
+        parsedForm[openKey] = parsed;
+      }
+      if (parsedForm[closeKey]) {
+        const parsed = parseTimeInput(parsedForm[closeKey]);
+        if (!parsed) {
+          alert(`Invalid time format for ${day} close: ${parsedForm[closeKey]}`);
+          return;
+        }
+        parsedForm[closeKey] = parsed;
+      }
+    }
+
     try {
       const res = await fetch('https://api.vivaitable.com/api/account/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(parsedForm),
       });
       if (res.ok) {
         alert('Account successfully created!');
@@ -178,10 +189,11 @@ const AccountCreation = () => {
                   {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
                     <td key={day + 'Open'} className="border px-1 py-1">
                       <input
-                        type="time"
+                        type="text"
                         name={`${day}Open`}
                         value={form[`${day}Open`] || ''}
                         onChange={handleChange}
+                        placeholder="e.g., 10am"
                         className="w-full p-1 border rounded"
                       />
                     </td>
@@ -191,10 +203,11 @@ const AccountCreation = () => {
                   {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
                     <td key={day + 'Close'} className="border px-1 py-1">
                       <input
-                        type="time"
+                        type="text"
                         name={`${day}Close`}
                         value={form[`${day}Close`] || ''}
                         onChange={handleChange}
+                        placeholder="e.g., 10pm"
                         className="w-full p-1 border rounded"
                       />
                     </td>
