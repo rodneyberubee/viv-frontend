@@ -1,13 +1,46 @@
 import React, { useState } from 'react';
 
+const usTimeZones = [
+  'America/New_York',       // Eastern
+  'America/Detroit',        // Eastern (Michigan)
+  'America/Kentucky/Louisville', 
+  'America/Kentucky/Monticello',
+  'America/Indiana/Indianapolis',
+  'America/Indiana/Vincennes',
+  'America/Indiana/Winamac',
+  'America/Indiana/Marengo',
+  'America/Indiana/Petersburg',
+  'America/Indiana/Vevay',
+  'America/Chicago',        // Central
+  'America/Menominee', 
+  'America/North_Dakota/Center',
+  'America/North_Dakota/New_Salem',
+  'America/North_Dakota/Beulah',
+  'America/Denver',         // Mountain
+  'America/Boise', 
+  'America/Phoenix',        // Arizona
+  'America/Los_Angeles',    // Pacific
+  'America/Anchorage',      // Alaska
+  'America/Juneau',
+  'America/Sitka',
+  'America/Metlakatla',
+  'America/Yakutat',
+  'America/Nome',
+  'America/Adak',           // Aleutian
+  'Pacific/Honolulu',       // Hawaii
+  'America/Port_of_Spain',  // Puerto Rico (Atlantic)
+  'America/Puerto_Rico',
+  'America/Virgin',         // USVI
+  'Pacific/Guam',           // Guam
+  'Pacific/Saipan',         // Northern Mariana Islands
+  'Pacific/Pago_Pago',      // American Samoa
+  'Pacific/Midway',         // Midway Islands
+];
+
 const AccountCreation = () => {
   const [form, setForm] = useState({
     name: '',
     email: '',
-    slug: '',
-    restaurantId: '',
-    baseId: '',
-    tableName: '',
     maxReservations: 10,
     futureCutoff: 30,
     timeZone: 'America/Los_Angeles',
@@ -27,7 +60,7 @@ const AccountCreation = () => {
     sundayClose: '',
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
   };
@@ -94,44 +127,6 @@ const AccountCreation = () => {
               />
             </div>
             <div>
-              <label className="block text-gray-700 font-medium mb-1">Restaurant Slug</label>
-              <input
-                name="slug"
-                value={form.slug}
-                onChange={handleChange}
-                placeholder="e.g., mollyscafe1"
-                className="p-2 border rounded w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Restaurant ID</label>
-              <input
-                name="restaurantId"
-                value={form.restaurantId}
-                onChange={handleChange}
-                placeholder="Unique identifier"
-                className="p-2 border rounded w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Base ID</label>
-              <input
-                name="baseId"
-                value={form.baseId}
-                onChange={handleChange}
-                className="p-2 border rounded w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Table Name</label>
-              <input
-                name="tableName"
-                value={form.tableName}
-                onChange={handleChange}
-                className="p-2 border rounded w-full"
-              />
-            </div>
-            <div>
               <label className="block text-gray-700 font-medium mb-1">Max Reservations</label>
               <input
                 name="maxReservations"
@@ -153,13 +148,18 @@ const AccountCreation = () => {
             </div>
             <div>
               <label className="block text-gray-700 font-medium mb-1">Timezone</label>
-              <input
+              <select
                 name="timeZone"
                 value={form.timeZone}
                 onChange={handleChange}
-                placeholder="e.g., America/Los_Angeles"
                 className="p-2 border rounded w-full"
-              />
+              >
+                {usTimeZones.map((tz) => (
+                  <option key={tz} value={tz}>
+                    {tz}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
