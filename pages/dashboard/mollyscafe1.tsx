@@ -19,6 +19,8 @@ const headerLabels: Record<string, string> = {
 };
 
 const MollysCafeDashboard = () => {
+  const [jwtToken, setJwtToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState<Config>({
     maxReservations: 0,
     futureCutoff: 0,
@@ -29,9 +31,51 @@ const MollysCafeDashboard = () => {
     DateTime.now().setZone('America/Los_Angeles').startOf('day')
   );
 
+  // Handle token exchange -> JWT
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('token');
+    const storedJwt = localStorage.getItem('jwtToken');
+
+    async function verifyToken(token: string) {
+      try {
+        const res = await fetch('https://api.vivaitable.com/api/auth/login/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        const data = await res.json();
+        if (data.token) {
+          localStorage.setItem('jwtToken', data.token);
+          setJwtToken(data.token);
+          window.history.replaceState({}, '', window.location.pathname); // clean URL
+        } else {
+          window.location.href = '/login';
+        }
+      } catch (err) {
+        console.error('[ERROR] Verifying token failed:', err);
+        window.location.href = '/login';
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (storedJwt) {
+      setJwtToken(storedJwt);
+      setLoading(false);
+    } else if (urlToken) {
+      verifyToken(urlToken);
+    } else {
+      window.location.href = '/login';
+    }
+  }, []);
+
   async function fetchConfig() {
+    if (!jwtToken) return;
     try {
-      const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/config');
+      const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/config', {
+        headers: { Authorization: `Bearer ${jwtToken}` },
+      });
       const data = await res.json();
       setConfig(data);
     } catch (err) {
@@ -40,8 +84,11 @@ const MollysCafeDashboard = () => {
   }
 
   async function fetchReservations() {
+    if (!jwtToken) return;
     try {
-      const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/reservations');
+      const res = await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/reservations', {
+        headers: { Authorization: `Bearer ${jwtToken}` },
+      });
       const data = await res.json();
       const reservationsFromServer = data.reservations || [];
 
@@ -61,16 +108,18 @@ const MollysCafeDashboard = () => {
             status: '', 
             confirmationCode: '' 
           };
-      setReservations([...reservationsFromServer, blankRowTemplate]); // new array reference
+      setReservations([...reservationsFromServer, blankRowTemplate]);
     } catch (err) {
       console.error('[ERROR] Fetching reservations failed:', err);
     }
   }
 
   useEffect(() => {
-    fetchConfig();
-    fetchReservations();
-  }, [config.timeZone, selectedDate]);
+    if (jwtToken) {
+      fetchConfig();
+      fetchReservations();
+    }
+  }, [jwtToken, config.timeZone, selectedDate]);
 
   // Listen for BroadcastChannel events
   useEffect(() => {
@@ -82,7 +131,7 @@ const MollysCafeDashboard = () => {
       }
     };
     return () => bc.close();
-  }, []);
+  }, [jwtToken]);
 
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -99,6 +148,7 @@ const MollysCafeDashboard = () => {
   };
 
   const updateConfig = async () => {
+    if (!jwtToken) return;
     const numericFields = ['maxReservations', 'futureCutoff'];
     const excluded = ['restaurantId', 'baseId', 'tableId', 'name', 'autonumber', 'slug', 'calibratedTime', 'tableName'];
     const cleaned = Object.fromEntries(
@@ -113,7 +163,7 @@ const MollysCafeDashboard = () => {
     try {
       await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/updateConfig', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
         body: JSON.stringify(cleaned),
       });
       alert('Config updated');
@@ -123,6 +173,7 @@ const MollysCafeDashboard = () => {
   };
 
   const updateReservations = async () => {
+    if (!jwtToken) return;
     try {
       const payload = reservations
         .filter((res) => Object.keys(res).length > 0 && res.confirmationCode)
@@ -133,7 +184,7 @@ const MollysCafeDashboard = () => {
 
       await fetch('https://api.vivaitable.com/api/dashboard/mollyscafe1/updateReservation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
         body: JSON.stringify(payload),
       });
       alert('Reservations updated');
@@ -188,6 +239,10 @@ const MollysCafeDashboard = () => {
   const onDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedDate(DateTime.fromISO(e.target.value, { zone: restaurantTz }));
   };
+
+  if (loading) {
+    return <div className="p-8 text-center">Loading...</div>;
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-100">
