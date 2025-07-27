@@ -9,6 +9,7 @@
   "dependencies": {
     "luxon": "^3.7.1",
     "stripe": "^18.3.0",
+    "@stripe/stripe-js": "^7.6.1"
     "next": "latest",
     "openai": "^5.8.2",
     "react": "latest",
