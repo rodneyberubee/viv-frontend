@@ -2,26 +2,20 @@
 
 import { useState, useEffect, useRef } from 'react';
 
-export default function VivAChatTemplate({ restaurantId }: { restaurantId: string }) {
+export default function VivAChatTemplate({ restaurantId }: { restaurantId?: string }) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastAction, setLastAction] = useState<any>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Create a broadcast channel for cross-page communication
   const broadcast = new BroadcastChannel('reservations');
 
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isLoading]);
+  const scrollToBottom = () => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  useEffect(scrollToBottom, [messages, isLoading]);
 
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !restaurantId) return;
 
     const userMessage = { role: 'user', content: input };
     const updatedMessages = [...messages, userMessage];
@@ -33,7 +27,7 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId: strin
       const requestPayload: { messages: any[]; context?: any } = { messages: updatedMessages };
       if (lastAction) requestPayload.context = lastAction;
 
-      const aiResponse = await fetch(`https://api.vivaitable.com/api/askViv/${restaurantId}`, {
+      const aiResponse = await fetch(`https://api.vivaitable.com/api/askViv/${String(restaurantId)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestPayload)
@@ -60,7 +54,6 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId: strin
         { role: 'assistant', content: spokenResponse || '⚠️ Viv had trouble replying.' }
       ]);
 
-      // Trigger dashboard update via BroadcastChannel if reservation completed
       if (aiData.type && aiData.type.toLowerCase().includes('complete')) {
         console.log('[DEBUG] Broadcasting reservation update');
         broadcast.postMessage({ type: 'reservationUpdate', timestamp: Date.now() });
@@ -73,6 +66,10 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId: strin
       setIsLoading(false);
     }
   };
+
+  if (!restaurantId) {
+    return <div className="p-8 text-center">Loading...</div>;
+  }
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 font-sans">
@@ -97,7 +94,6 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId: strin
           </div>
         ))}
 
-        {/* Typing indicator */}
         {isLoading && (
           <div className="flex w-full justify-start">
             <div className="bg-white rounded-2xl px-3 py-2 shadow animate-fadeIn flex space-x-1">
@@ -119,40 +115,27 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId: strin
           onChange={(e) => setInput(e.target.value)}
           placeholder="Type a message..."
           className="flex-1 border rounded-full px-4 py-2 focus:outline-none text-[16px]"
-          style={{
-            fontFamily: `'SF Pro Rounded', 'Arial Rounded MT', 'Helvetica Neue', sans-serif`,
-            fontWeight: 400
-          }}
         />
         <button
           onClick={sendMessage}
           disabled={isLoading}
           className="bg-orange-500 text-white rounded-full w-12 h-12 flex items-center justify-center text-2xl hover:bg-orange-600 transform rotate-270"
-          style={{
-            fontFamily: `'SF Pro Rounded', 'Arial Rounded MT', 'Helvetica Neue', sans-serif`,
-            fontWeight: 425
-          }}
         >
           !V
         </button>
       </div>
 
-      {/* Animations */}
       <style jsx>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(5px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-in-out;
-        }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-in-out; }
         @keyframes bounce {
           0%, 80%, 100% { transform: scale(0); }
           40% { transform: scale(1); }
         }
-        .animate-bounce {
-          animation: bounce 1.4s infinite ease-in-out;
-        }
+        .animate-bounce { animation: bounce 1.4s infinite ease-in-out; }
       `}</style>
     </div>
   );
