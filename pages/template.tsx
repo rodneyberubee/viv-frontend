@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 
-export default function MollysCafe() {
+export default function VivAChatTemplate({ restaurantId }: { restaurantId: string }) {
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [lastAction, setLastAction] = useState(null);
+  const [lastAction, setLastAction] = useState<any>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Create a broadcast channel for cross-page communication
@@ -33,7 +33,7 @@ export default function MollysCafe() {
       const requestPayload: { messages: any[]; context?: any } = { messages: updatedMessages };
       if (lastAction) requestPayload.context = lastAction;
 
-      const aiResponse = await fetch('https://api.vivaitable.com/api/askViv/mollyscafe1', {
+      const aiResponse = await fetch(`https://api.vivaitable.com/api/askViv/${restaurantId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestPayload)
