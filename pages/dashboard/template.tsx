@@ -56,30 +56,42 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
           setJwtToken(data.token);
           window.history.replaceState({}, '', window.location.pathname);
         } else {
+          localStorage.removeItem('jwtToken');
           window.location.href = '/login';
         }
       } catch (err) {
         console.error('[ERROR] Verifying token failed:', err);
+        localStorage.removeItem('jwtToken');
         window.location.href = '/login';
       } finally {
         setLoading(false);
       }
     }
 
-    if (storedJwt) {
-      setJwtToken(storedJwt);
-      setLoading(false);
-    } else if (urlToken) {
+    if (urlToken) {
       verifyToken(urlToken);
+    } else if (storedJwt) {
+      verifyToken(storedJwt);
     } else {
       window.location.href = '/login';
     }
   }, []);
 
+  // Auto-logout if token is invalid on any fetch
+  async function safeFetch(url: string, options: any) {
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+      localStorage.removeItem('jwtToken');
+      window.location.href = '/login';
+      throw new Error('Unauthorized');
+    }
+    return res;
+  }
+
   async function fetchConfig() {
     if (!jwtToken) return;
     try {
-      const res = await fetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/config`, {
+      const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/config`, {
         headers: { Authorization: `Bearer ${jwtToken}` },
       });
       const data = await res.json();
@@ -92,7 +104,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   async function fetchReservations() {
     if (!jwtToken) return;
     try {
-      const res = await fetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/reservations`, {
+      const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/reservations`, {
         headers: { Authorization: `Bearer ${jwtToken}` },
       });
       const data = await res.json();
@@ -154,7 +166,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     );
 
     try {
-      await fetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateConfig`, {
+      await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateConfig`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
         body: JSON.stringify({ ...cleaned, restaurantId }),
@@ -175,7 +187,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
           updatedFields: { ...fields, restaurantId }
         }));
 
-      await fetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
+      await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
         body: JSON.stringify(payload),
