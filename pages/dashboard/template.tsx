@@ -22,6 +22,8 @@ const headerLabels: Record<string, string> = {
   confirmationCode: 'Confirmation Code',
 };
 
+const editableFields = ['date', 'timeSlot', 'name', 'partySize', 'contactInfo', 'status', 'confirmationCode'];
+
 const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,23 +98,11 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
       const data = await res.json();
       const reservationsFromServer = data.reservations || [];
 
-      const blankRowTemplate = reservationsFromServer.length
-        ? Object.keys(reservationsFromServer[0]).reduce((acc, key) => {
-            acc[key] = key === 'date'
-              ? selectedDate.toFormat('yyyy-MM-dd')
-              : '';
-            return acc;
-          }, {} as any)
-        : { 
-            date: selectedDate.toFormat('yyyy-MM-dd'),
-            timeSlot: '', 
-            name: '', 
-            partySize: '', 
-            contactInfo: '', 
-            status: '', 
-            confirmationCode: '',
-            restaurantId // <-- NEW: ensure blank rows carry the restaurantId
-          };
+      const blankRowTemplate = editableFields.reduce((acc, key) => {
+        acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
+        return acc;
+      }, { restaurantId } as any);
+
       setReservations([...reservationsFromServer, blankRowTemplate]);
     } catch (err) {
       console.error('[ERROR] Fetching reservations failed:', err);
@@ -167,7 +157,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
       await fetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateConfig`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
-        body: JSON.stringify({ ...cleaned, restaurantId }), // <-- NEW: include restaurantId explicitly
+        body: JSON.stringify({ ...cleaned, restaurantId }),
       });
       alert('Config updated');
     } catch (err) {
@@ -182,7 +172,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         .filter((res) => Object.keys(res).length > 0 && res.confirmationCode)
         .map(({ id, rawConfirmationCode, dateFormatted, ...fields }) => ({
           recordId: id,
-          updatedFields: { ...fields, restaurantId } // <-- NEW: always include restaurantId
+          updatedFields: { ...fields, restaurantId }
         }));
 
       await fetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
@@ -196,7 +186,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     }
   };
 
-  const reservationHidden = ['id', 'rawConfirmationCode', 'dateFormatted', 'notes'];
+  const reservationHidden = ['id', 'rawConfirmationCode', 'dateFormatted', 'notes', 'restaurantId'];
   const restaurantTz = config.timeZone || 'America/Los_Angeles';
   const format24hr = (time: string) => {
     if (!time) return '';
@@ -205,10 +195,10 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   };
 
   const filteredReservations = reservations
-    .filter(r => 
-      DateTime.fromISO(r.date, { zone: restaurantTz }).hasSame(selectedDate, 'day') &&
-      ((r.name && r.timeSlot) || r.status === 'blocked')
-    )
+    .filter(r => {
+      const dt = DateTime.fromISO(r.date, { zone: restaurantTz });
+      return dt.isValid && dt.hasSame(selectedDate, 'day') && ((r.name && r.timeSlot) || r.status === 'blocked');
+    })
     .sort((a, b) => {
       const t1 = DateTime.fromISO(`${a.date}T${a.timeSlot || '00:00'}`, { zone: restaurantTz });
       const t2 = DateTime.fromISO(`${b.date}T${b.timeSlot || '00:00'}`, { zone: restaurantTz });
@@ -291,32 +281,27 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                {filteredReservations.length > 0 &&
-                  Object.keys(filteredReservations[0])
-                    .filter((key) => !reservationHidden.includes(key))
-                    .map((key) => (
-                      <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
-                        {headerLabels[key] || key}
-                      </th>
-                    ))}
+                {editableFields.map((key) => (
+                  <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
+                    {headerLabels[key] || key}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {filteredReservations.map((res, i) => (
                 <tr key={res.id || i} className="border-t hover:bg-gray-50">
-                  {Object.entries(res)
-                    .filter(([key]) => !reservationHidden.includes(key))
-                    .map(([key, val]) => (
-                      <td key={key} className="px-3 py-2">
-                        <input
-                          type={key === 'timeSlot' ? 'time' : key === 'date' ? 'date' : 'text'}
-                          name={key}
-                          value={key === 'timeSlot' ? format24hr(String(val)) : String(val ?? '')}
-                          onChange={(e) => handleReservationEdit(e, res.id, i)}
-                          className="w-full p-1 rounded border border-transparent focus:border-orange-500 focus:ring focus:ring-orange-200"
-                        />
-                      </td>
-                    ))}
+                  {editableFields.map((key) => (
+                    <td key={key} className="px-3 py-2">
+                      <input
+                        type={key === 'timeSlot' ? 'time' : key === 'date' ? 'date' : 'text'}
+                        name={key}
+                        value={key === 'timeSlot' ? format24hr(String(res[key])) : String(res[key] ?? '')}
+                        onChange={(e) => handleReservationEdit(e, res.id, i)}
+                        className="w-full p-1 rounded border border-transparent focus:border-orange-500 focus:ring focus:ring-orange-200"
+                      />
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
