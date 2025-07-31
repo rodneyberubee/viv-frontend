@@ -74,6 +74,7 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
           setJwtToken(data.token);
           window.history.replaceState({}, '', window.location.pathname);
         } else {
+          console.warn('[AUTH] Invalid token during verify');
           localStorage.removeItem('jwtToken');
           window.location.href = '/login';
         }
@@ -92,6 +93,7 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
       setJwtToken(storedJwt);
       setLoading(false);
     } else {
+      console.warn('[AUTH] No valid token found');
       localStorage.removeItem('jwtToken');
       window.location.href = '/login';
     }
@@ -101,6 +103,7 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
   async function safeFetch(url: string, options: any) {
     const res = await fetch(url, options);
     if (res.status === 401) {
+      console.warn('[AUTH] JWT expired or unauthorized during fetch');
       localStorage.removeItem('jwtToken');
       window.location.href = '/login';
       throw new Error('Unauthorized');
@@ -115,7 +118,7 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
         headers: { Authorization: `Bearer ${jwtToken}` },
       });
       const data = await res.json();
-      setConfig(data);
+      setConfig(data.config || data); // Adjust for backend wrapped config
     } catch (err) {
       console.error('[ERROR] Fetching config failed:', err);
     }
