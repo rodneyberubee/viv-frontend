@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { DateTime } from 'luxon';
-import jwtDecode from 'jwt-decode'; // ✅ Add this to decode exp
 
 type Config = {
   maxReservations: number;
@@ -13,7 +12,17 @@ type DashboardProps = {
   restaurantId: string;
 };
 
-type JWTPayload = { exp: number; restaurantId: string; email: string }; // ✅ For decoding
+type JWTPayload = { exp: number; restaurantId: string; email: string };
+
+// Inline JWT decoder (no external package)
+const parseJwt = (token: string): JWTPayload | null => {
+  try {
+    const base64 = token.split('.')[1];
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+};
 
 const headerLabels: Record<string, string> = {
   date: 'Date',
@@ -27,7 +36,7 @@ const headerLabels: Record<string, string> = {
 
 const editableFields = ['date', 'timeSlot', 'name', 'partySize', 'contactInfo', 'status', 'confirmationCode'];
 
-const DashboardTemplate = ({ restaurantId }: DashboardProps): JSX.Element => {
+const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState<Config>({
@@ -40,14 +49,10 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps): JSX.Element => {
     DateTime.now().setZone('America/Los_Angeles').startOf('day')
   );
 
-  // ✅ Helper: check if a token is expired
+  // Helper: check if a token is expired
   const isTokenExpired = (token: string) => {
-    try {
-      const decoded: JWTPayload = jwtDecode(token);
-      return Date.now() >= decoded.exp * 1000;
-    } catch {
-      return true;
-    }
+    const decoded = parseJwt(token);
+    return !decoded || Date.now() >= decoded.exp * 1000;
   };
 
   // Handle token exchange -> JWT
@@ -81,7 +86,6 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps): JSX.Element => {
       }
     }
 
-    // ✅ Logic order:
     if (urlToken) {
       verifyToken(urlToken);
     } else if (storedJwt && !isTokenExpired(storedJwt)) {
@@ -214,7 +218,6 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps): JSX.Element => {
     }
   };
 
-  const reservationHidden = ['id', 'rawConfirmationCode', 'dateFormatted', 'notes', 'restaurantId'];
   const restaurantTz = config.timeZone || 'America/Los_Angeles';
   const format24hr = (time: string) => {
     if (!time) return '';
@@ -265,7 +268,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps): JSX.Element => {
     return <div className="p-8 text-center">Loading...</div>;
   }
 
-  // ✅ MAIN JSX RETURN
+  // MAIN JSX
   return (
     <div className="flex min-h-screen bg-gray-100">
       <aside className="w-64 bg-white shadow-md p-6 space-y-6">
@@ -302,8 +305,6 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps): JSX.Element => {
             <p className="text-gray-600">This Month</p>
           </div>
         </div>
-
-        {/* Rest of your reservations/config UI unchanged */}
       </main>
     </div>
   );
