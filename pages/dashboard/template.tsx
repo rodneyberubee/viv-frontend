@@ -14,7 +14,6 @@ type DashboardProps = {
 
 type JWTPayload = { exp: number; restaurantId: string; email: string };
 
-// Inline JWT decoder (no external package)
 const parseJwt = (token: string): JWTPayload | null => {
   try {
     const base64 = token.split('.')[1];
@@ -40,11 +39,7 @@ const daysOfWeek = ['monday','tuesday','wednesday','thursday','friday','saturday
 const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [config, setConfig] = useState<Config>({
-    maxReservations: 0,
-    futureCutoff: 0,
-    timeZone: 'America/Los_Angeles',
-  });
+  const [config, setConfig] = useState<Config>({ maxReservations: 0, futureCutoff: 0, timeZone: 'America/Los_Angeles' });
   const [reservations, setReservations] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<DateTime>(
     DateTime.now().setZone('America/Los_Angeles').startOf('day')
@@ -53,6 +48,36 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
   const isTokenExpired = (token: string) => {
     const decoded = parseJwt(token);
     return !decoded || Date.now() >= decoded.exp * 1000;
+  };
+
+  // 🔄 Schedule silent refresh
+  const scheduleTokenRefresh = (token: string) => {
+    const decoded = parseJwt(token);
+    if (!decoded) return;
+    const expiresIn = decoded.exp * 1000 - Date.now();
+    const refreshBefore = expiresIn - 5 * 60 * 1000; // refresh 5 min before expiry
+    if (refreshBefore > 0) {
+      setTimeout(async () => {
+        try {
+          const res = await fetch('https://api.vivaitable.com/api/auth/refresh', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json();
+          if (data.token) {
+            localStorage.setItem('jwtToken', data.token);
+            setJwtToken(data.token);
+            scheduleTokenRefresh(data.token);
+          } else {
+            localStorage.removeItem('jwtToken');
+            window.location.href = '/login';
+          }
+        } catch {
+          localStorage.removeItem('jwtToken');
+          window.location.href = '/login';
+        }
+      }, refreshBefore);
+    }
   };
 
   useEffect(() => {
@@ -71,6 +96,7 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
         if (data.token) {
           localStorage.setItem('jwtToken', data.token);
           setJwtToken(data.token);
+          scheduleTokenRefresh(data.token);
           window.history.replaceState({}, '', window.location.pathname);
         } else {
           localStorage.removeItem('jwtToken');
@@ -87,6 +113,7 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
     if (urlToken) verifyToken(urlToken);
     else if (storedJwt && !isTokenExpired(storedJwt)) {
       setJwtToken(storedJwt);
+      scheduleTokenRefresh(storedJwt);
       setLoading(false);
     } else {
       localStorage.removeItem('jwtToken');
@@ -135,18 +162,8 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
     }
   }
 
-  useEffect(() => {
-    if (jwtToken) {
-      fetchConfig();
-      fetchReservations();
-    }
-  }, [jwtToken, config.timeZone, selectedDate]);
-
-  useEffect(() => {
-    const bc = new BroadcastChannel('reservations');
-    bc.onmessage = (e) => { if (e.data.type === 'reservationUpdate') fetchReservations(); };
-    return () => bc.close();
-  }, [jwtToken]);
+  useEffect(() => { if (jwtToken) { fetchConfig(); fetchReservations(); } }, [jwtToken, config.timeZone, selectedDate]);
+  useEffect(() => { const bc = new BroadcastChannel('reservations'); bc.onmessage = (e) => { if (e.data.type === 'reservationUpdate') fetchReservations(); }; return () => bc.close(); }, [jwtToken]);
 
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -162,12 +179,7 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
     if (!jwtToken) return;
     const numericFields = ['maxReservations', 'futureCutoff'];
     const excluded = ['restaurantId', 'baseId', 'tableId', 'name', 'autonumber', 'slug', 'calibratedTime', 'tableName'];
-    const cleaned = Object.fromEntries(
-      Object.entries(config)
-        .filter(([key]) => !excluded.includes(key))
-        .map(([key, val]) => [key, numericFields.includes(key) ? parseInt(String(val), 10) || 0 : val])
-    );
-
+    const cleaned = Object.fromEntries(Object.entries(config).filter(([key]) => !excluded.includes(key)).map(([key, val]) => [key, numericFields.includes(key) ? parseInt(String(val), 10) || 0 : val]));
     try {
       await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateConfig`, {
         method: 'POST',
@@ -175,16 +187,13 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
         body: JSON.stringify({ ...cleaned, restaurantId }),
       });
       alert('Config updated');
-    } catch (err) {
-      console.error('[ERROR] Updating config failed:', err);
-    }
+    } catch (err) { console.error('[ERROR] Updating config failed:', err); }
   };
 
   const updateReservations = async () => {
     if (!jwtToken) return;
     try {
-      const payload = reservations
-        .filter((res) => Object.keys(res).length > 0 && res.confirmationCode)
+      const payload = reservations.filter((res) => Object.keys(res).length > 0 && res.confirmationCode)
         .map(({ id, rawConfirmationCode, dateFormatted, ...fields }) => ({ recordId: id, updatedFields: { ...fields, restaurantId } }));
       await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
         method: 'POST',
@@ -192,46 +201,30 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
         body: JSON.stringify(payload),
       });
       alert('Reservations updated');
-    } catch (err) {
-      console.error('[ERROR] Updating reservations failed:', err);
-    }
+    } catch (err) { console.error('[ERROR] Updating reservations failed:', err); }
   };
 
   const restaurantTz = config.timeZone || 'America/Los_Angeles';
-  const format24hr = (time: string) => {
-    if (!time) return '';
-    const dt = DateTime.fromISO(`2000-01-01T${time}`, { zone: restaurantTz });
-    return dt.isValid ? dt.toFormat('HH:mm') : '';
-  };
+  const format24hr = (time: string) => { if (!time) return ''; const dt = DateTime.fromISO(`2000-01-01T${time}`, { zone: restaurantTz }); return dt.isValid ? dt.toFormat('HH:mm') : ''; };
 
-  const filteredReservations = reservations
-    .filter(r => {
-      const dt = DateTime.fromISO(r.date, { zone: restaurantTz });
-      return dt.isValid && dt.hasSame(selectedDate, 'day') && ((r.name && r.timeSlot) || r.status === 'blocked');
-    })
-    .sort((a, b) => {
-      const t1 = DateTime.fromISO(`${a.date}T${a.timeSlot || '00:00'}`, { zone: restaurantTz });
-      const t2 = DateTime.fromISO(`${b.date}T${b.timeSlot || '00:00'}`, { zone: restaurantTz });
-      return t1.toMillis() - t2.toMillis();
-    });
+  const filteredReservations = reservations.filter(r => {
+    const dt = DateTime.fromISO(r.date, { zone: restaurantTz });
+    return dt.isValid && dt.hasSame(selectedDate, 'day') && ((r.name && r.timeSlot) || r.status === 'blocked');
+  }).sort((a, b) => {
+    const t1 = DateTime.fromISO(`${a.date}T${a.timeSlot || '00:00'}`, { zone: restaurantTz });
+    const t2 = DateTime.fromISO(`${b.date}T${b.timeSlot || '00:00'}`, { zone: restaurantTz });
+    return t1.toMillis() - t2.toMillis();
+  });
 
   const today = DateTime.now().setZone(restaurantTz).startOf('day');
   const weekStart = today.startOf('week');
   const weekEnd = today.endOf('week');
   const monthStart = today.startOf('month');
   const monthEnd = today.endOf('month');
-  const validForMetrics = reservations.filter(
-    r => r.status?.toLowerCase() === 'confirmed' && DateTime.fromISO(r.date, { zone: restaurantTz }).isValid
-  );
+  const validForMetrics = reservations.filter(r => r.status?.toLowerCase() === 'confirmed' && DateTime.fromISO(r.date, { zone: restaurantTz }).isValid);
   const todayCount = validForMetrics.filter(r => DateTime.fromISO(r.date, { zone: restaurantTz }).hasSame(today, 'day')).length;
-  const weekCount = validForMetrics.filter(r => {
-    const d = DateTime.fromISO(r.date, { zone: restaurantTz });
-    return d >= weekStart && d <= weekEnd;
-  }).length;
-  const monthCount = validForMetrics.filter(r => {
-    const d = DateTime.fromISO(r.date, { zone: restaurantTz });
-    return d >= monthStart && d <= monthEnd;
-  }).length;
+  const weekCount = validForMetrics.filter(r => { const d = DateTime.fromISO(r.date, { zone: restaurantTz }); return d >= weekStart && d <= weekEnd; }).length;
+  const monthCount = validForMetrics.filter(r => { const d = DateTime.fromISO(r.date, { zone: restaurantTz }); return d >= monthStart && d <= monthEnd; }).length;
 
   const goToPrevDay = () => setSelectedDate(prev => prev.minus({ days: 1 }));
   const goToNextDay = () => setSelectedDate(prev => prev.plus({ days: 1 }));
@@ -239,7 +232,6 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
 
   if (loading) return <div className="p-8 text-center">Loading...</div>;
 
-  // MAIN JSX
   return (
     <div className="flex min-h-screen bg-gray-100">
       <aside className="w-64 bg-white shadow-md p-6 space-y-6">
