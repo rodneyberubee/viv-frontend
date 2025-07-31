@@ -49,13 +49,11 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
     DateTime.now().setZone('America/Los_Angeles').startOf('day')
   );
 
-  // Helper: check if a token is expired
   const isTokenExpired = (token: string) => {
     const decoded = parseJwt(token);
     return !decoded || Date.now() >= decoded.exp * 1000;
   };
 
-  // Handle token exchange -> JWT
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get('token');
@@ -74,12 +72,10 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
           setJwtToken(data.token);
           window.history.replaceState({}, '', window.location.pathname);
         } else {
-          console.warn('[AUTH] Invalid token during verify');
           localStorage.removeItem('jwtToken');
           window.location.href = '/login';
         }
-      } catch (err) {
-        console.error('[ERROR] Verifying token failed:', err);
+      } catch {
         localStorage.removeItem('jwtToken');
         window.location.href = '/login';
       } finally {
@@ -87,23 +83,19 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
       }
     }
 
-    if (urlToken) {
-      verifyToken(urlToken);
-    } else if (storedJwt && !isTokenExpired(storedJwt)) {
+    if (urlToken) verifyToken(urlToken);
+    else if (storedJwt && !isTokenExpired(storedJwt)) {
       setJwtToken(storedJwt);
       setLoading(false);
     } else {
-      console.warn('[AUTH] No valid token found');
       localStorage.removeItem('jwtToken');
       window.location.href = '/login';
     }
   }, []);
 
-  // Auto-logout if token is invalid on any fetch
   async function safeFetch(url: string, options: any) {
     const res = await fetch(url, options);
     if (res.status === 401) {
-      console.warn('[AUTH] JWT expired or unauthorized during fetch');
       localStorage.removeItem('jwtToken');
       window.location.href = '/login';
       throw new Error('Unauthorized');
@@ -118,7 +110,7 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
         headers: { Authorization: `Bearer ${jwtToken}` },
       });
       const data = await res.json();
-      setConfig(data.config || data); // Adjust for backend wrapped config
+      setConfig(data.config || data);
     } catch (err) {
       console.error('[ERROR] Fetching config failed:', err);
     }
@@ -132,12 +124,10 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
       });
       const data = await res.json();
       const reservationsFromServer = data.reservations || [];
-
       const blankRowTemplate = editableFields.reduce((acc, key) => {
         acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
         return acc;
       }, { restaurantId } as any);
-
       setReservations([...reservationsFromServer, blankRowTemplate]);
     } catch (err) {
       console.error('[ERROR] Fetching reservations failed:', err);
@@ -153,11 +143,7 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
 
   useEffect(() => {
     const bc = new BroadcastChannel('reservations');
-    bc.onmessage = (e) => {
-      if (e.data.type === 'reservationUpdate') {
-        fetchReservations();
-      }
-    };
+    bc.onmessage = (e) => { if (e.data.type === 'reservationUpdate') fetchReservations(); };
     return () => bc.close();
   }, [jwtToken]);
 
@@ -168,11 +154,7 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
 
   const handleReservationEdit = (e: React.ChangeEvent<HTMLInputElement>, id: string | undefined, index: number) => {
     const { name, value } = e.target;
-    setReservations((prev) =>
-      prev.map((res, i) =>
-        res.id === id || (!res.id && i === index) ? { ...res, [name]: value } : res
-      )
-    );
+    setReservations((prev) => prev.map((res, i) => res.id === id || (!res.id && i === index) ? { ...res, [name]: value } : res));
   };
 
   const updateConfig = async () => {
@@ -182,10 +164,7 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
     const cleaned = Object.fromEntries(
       Object.entries(config)
         .filter(([key]) => !excluded.includes(key))
-        .map(([key, val]) => [
-          key,
-          numericFields.includes(key) ? parseInt(String(val), 10) || 0 : val
-        ])
+        .map(([key, val]) => [key, numericFields.includes(key) ? parseInt(String(val), 10) || 0 : val])
     );
 
     try {
@@ -205,11 +184,7 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
     try {
       const payload = reservations
         .filter((res) => Object.keys(res).length > 0 && res.confirmationCode)
-        .map(({ id, rawConfirmationCode, dateFormatted, ...fields }) => ({
-          recordId: id,
-          updatedFields: { ...fields, restaurantId }
-        }));
-
+        .map(({ id, rawConfirmationCode, dateFormatted, ...fields }) => ({ recordId: id, updatedFields: { ...fields, restaurantId } }));
       await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
@@ -245,13 +220,9 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
   const monthStart = today.startOf('month');
   const monthEnd = today.endOf('month');
   const validForMetrics = reservations.filter(
-    r =>
-      r.status?.toLowerCase() === 'confirmed' &&
-      DateTime.fromISO(r.date, { zone: restaurantTz }).isValid
+    r => r.status?.toLowerCase() === 'confirmed' && DateTime.fromISO(r.date, { zone: restaurantTz }).isValid
   );
-  const todayCount = validForMetrics.filter(r =>
-    DateTime.fromISO(r.date, { zone: restaurantTz }).hasSame(today, 'day')
-  ).length;
+  const todayCount = validForMetrics.filter(r => DateTime.fromISO(r.date, { zone: restaurantTz }).hasSame(today, 'day')).length;
   const weekCount = validForMetrics.filter(r => {
     const d = DateTime.fromISO(r.date, { zone: restaurantTz });
     return d >= weekStart && d <= weekEnd;
@@ -263,13 +234,9 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
 
   const goToPrevDay = () => setSelectedDate(prev => prev.minus({ days: 1 }));
   const goToNextDay = () => setSelectedDate(prev => prev.plus({ days: 1 }));
-  const onDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedDate(DateTime.fromISO(e.target.value, { zone: restaurantTz }));
-  };
+  const onDateChange = (e: React.ChangeEvent<HTMLInputElement>) => setSelectedDate(DateTime.fromISO(e.target.value, { zone: restaurantTz }));
 
-  if (loading) {
-    return <div className="p-8 text-center">Loading...</div>;
-  }
+  if (loading) return <div className="p-8 text-center">Loading...</div>;
 
   // MAIN JSX
   return (
@@ -286,28 +253,58 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
       <main className="flex-1 p-8 space-y-8">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Reservations</h1>
-          <button
-            onClick={updateReservations}
-            className="bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600"
-          >
-            Update Reservations
-          </button>
+          <button onClick={updateReservations} className="bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600">Update Reservations</button>
         </div>
 
         <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white rounded shadow p-4 text-center">
-            <p className="text-2xl font-bold">{todayCount}</p>
-            <p className="text-gray-600">Today</p>
-          </div>
-          <div className="bg-white rounded shadow p-4 text-center">
-            <p className="text-2xl font-bold">{weekCount}</p>
-            <p className="text-gray-600">This Week</p>
-          </div>
-          <div className="bg-white rounded shadow p-4 text-center">
-            <p className="text-2xl font-bold">{monthCount}</p>
-            <p className="text-gray-600">This Month</p>
-          </div>
+          <div className="bg-white rounded shadow p-4 text-center"><p className="text-2xl font-bold">{todayCount}</p><p className="text-gray-600">Today</p></div>
+          <div className="bg-white rounded shadow p-4 text-center"><p className="text-2xl font-bold">{weekCount}</p><p className="text-gray-600">This Week</p></div>
+          <div className="bg-white rounded shadow p-4 text-center"><p className="text-2xl font-bold">{monthCount}</p><p className="text-gray-600">This Month</p></div>
         </div>
+
+        {/* Reservations Table */}
+        <section className="bg-white rounded shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Reservations for {selectedDate.toFormat('MMMM dd, yyyy')}</h2>
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>{editableFields.map((key) => <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">{headerLabels[key]}</th>)}</tr>
+            </thead>
+            <tbody>
+              {filteredReservations.map((res, i) => (
+                <tr key={res.id || i} className="border-t hover:bg-gray-50">
+                  {editableFields.map((key) => (
+                    <td key={key} className="px-3 py-2">
+                      <input
+                        type={key === 'timeSlot' ? 'time' : key === 'date' ? 'date' : 'text'}
+                        name={key}
+                        value={key === 'timeSlot' ? format24hr(String(res[key])) : String(res[key] ?? '')}
+                        onChange={(e) => handleReservationEdit(e, res.id, i)}
+                        className="w-full p-1 rounded border border-transparent focus:border-orange-500 focus:ring focus:ring-orange-200"
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="flex items-center justify-center space-x-4 mt-4">
+            <button onClick={goToPrevDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Prev</button>
+            <input type="date" value={selectedDate.toFormat('yyyy-MM-dd')} onChange={onDateChange} className="p-2 border rounded" />
+            <button onClick={goToNextDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Next</button>
+          </div>
+        </section>
+
+        {/* Config Section */}
+        <section className="bg-white rounded shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Restaurant Config</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <div><label className="block text-gray-700 font-medium mb-1">Max Reservations</label><input name="maxReservations" type="number" value={String(config.maxReservations ?? '')} onChange={handleConfigChange} className="p-2 border rounded w-full" /></div>
+            <div><label className="block text-gray-700 font-medium mb-1">Future Cutoff (days)</label><input name="futureCutoff" type="number" value={String(config.futureCutoff ?? '')} onChange={handleConfigChange} className="p-2 border rounded w-full" /></div>
+            <div><label className="block text-gray-700 font-medium mb-1">Timezone</label><input name="timeZone" type="text" value={config.timeZone || ''} onChange={handleConfigChange} className="p-2 border rounded w-full" /></div>
+          </div>
+          <div className="flex justify-end"><button onClick={updateConfig} className="mt-4 bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600">Update Config</button></div>
+        </section>
       </main>
     </div>
   );
