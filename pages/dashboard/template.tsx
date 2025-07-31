@@ -35,6 +35,7 @@ const headerLabels: Record<string, string> = {
 };
 
 const editableFields = ['date', 'timeSlot', 'name', 'partySize', 'contactInfo', 'status', 'confirmationCode'];
+const daysOfWeek = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
 const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
@@ -303,6 +304,33 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
             <div><label className="block text-gray-700 font-medium mb-1">Future Cutoff (days)</label><input name="futureCutoff" type="number" value={String(config.futureCutoff ?? '')} onChange={handleConfigChange} className="p-2 border rounded w-full" /></div>
             <div><label className="block text-gray-700 font-medium mb-1">Timezone</label><input name="timeZone" type="text" value={config.timeZone || ''} onChange={handleConfigChange} className="p-2 border rounded w-full" /></div>
           </div>
+
+          {/* Operating Hours */}
+          <div className="mt-6 overflow-auto">
+            <h3 className="text-lg font-semibold mb-2">Operating Hours</h3>
+            <table className="w-full text-sm border">
+              <thead>
+                <tr>{daysOfWeek.map(day => <th key={day} className="border px-2 py-1 capitalize">{day}</th>)}</tr>
+              </thead>
+              <tbody>
+                <tr>
+                  {daysOfWeek.map(day => (
+                    <td key={day + 'Open'} className="border px-1 py-1">
+                      <input type="time" name={`${day}Open`} value={config[`${day}Open`] || ''} onChange={handleConfigChange} className="w-full p-1 border rounded" />
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  {daysOfWeek.map(day => (
+                    <td key={day + 'Close'} className="border px-1 py-1">
+                      <input type="time" name={`${day}Close`} value={config[`${day}Close`] || ''} onChange={handleConfigChange} className="w-full p-1 border rounded" />
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
           <div className="flex justify-end"><button onClick={updateConfig} className="mt-4 bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600">Update Config</button></div>
         </section>
       </main>
