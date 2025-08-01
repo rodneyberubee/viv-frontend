@@ -8,11 +8,22 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
   const [isLoading, setIsLoading] = useState(false);
   const [lastAction, setLastAction] = useState<any>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
-
-  const broadcast = new BroadcastChannel('reservations');
+  const broadcastRef = useRef<BroadcastChannel | null>(null); // persistent reference
 
   const scrollToBottom = () => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   useEffect(scrollToBottom, [messages, isLoading]);
+
+  // Initialize broadcast channel only once
+  useEffect(() => {
+    const bc = new BroadcastChannel('reservations');
+    broadcastRef.current = bc;
+    console.log('[DEBUG] VivAChatTemplate BroadcastChannel initialized');
+
+    return () => {
+      console.log('[DEBUG] VivAChatTemplate BroadcastChannel closed');
+      bc.close();
+    };
+  }, []);
 
   const sendMessage = async () => {
     if (!input.trim() || !restaurantId) return;
@@ -54,13 +65,15 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
         { role: 'assistant', content: spokenResponse || '⚠️ Viv had trouble replying.' }
       ]);
 
+      // Broadcast reservation updates
       if (aiData.type && aiData.type.toLowerCase().includes('complete')) {
-        console.log('[DEBUG] Broadcasting reservation update');
-        broadcast.postMessage({ type: 'reservationUpdate', timestamp: Date.now() });
+        console.log('[DEBUG] Broadcasting reservation update from VivAChat');
+        broadcastRef.current?.postMessage({ type: 'reservationUpdate', timestamp: Date.now() });
       }
 
       setLastAction({ type: aiData.type, confirmationCode: aiData.confirmationCode });
     } catch (error) {
+      console.error('[ERROR] sendMessage failed:', error);
       setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Sorry, something went wrong.' }]);
     } finally {
       setIsLoading(false);
