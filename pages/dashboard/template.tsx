@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { DateTime } from 'luxon';
 
 type Config = {
@@ -44,18 +44,18 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
   const [selectedDate, setSelectedDate] = useState<DateTime>(
     DateTime.now().setZone('America/Los_Angeles').startOf('day')
   );
+  const broadcastRef = useRef<BroadcastChannel | null>(null);
 
   const isTokenExpired = (token: string) => {
     const decoded = parseJwt(token);
     return !decoded || Date.now() >= decoded.exp * 1000;
   };
 
-  // 🔄 Schedule silent refresh
   const scheduleTokenRefresh = (token: string) => {
     const decoded = parseJwt(token);
     if (!decoded) return;
     const expiresIn = decoded.exp * 1000 - Date.now();
-    const refreshBefore = expiresIn - 5 * 60 * 1000; // refresh 5 min before expiry
+    const refreshBefore = expiresIn - 5 * 60 * 1000;
     if (refreshBefore > 0) {
       setTimeout(async () => {
         try {
@@ -163,7 +163,17 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
   }
 
   useEffect(() => { if (jwtToken) { fetchConfig(); fetchReservations(); } }, [jwtToken, config.timeZone, selectedDate]);
-  useEffect(() => { const bc = new BroadcastChannel('reservations'); bc.onmessage = (e) => { if (e.data.type === 'reservationUpdate') fetchReservations(); }; return () => bc.close(); }, [jwtToken]);
+
+  // Persistent BroadcastChannel listener
+  useEffect(() => {
+    const bc = new BroadcastChannel('reservations');
+    broadcastRef.current = bc;
+    bc.onmessage = (e) => {
+      console.log('[DEBUG] Broadcast received:', e.data);
+      if (e.data.type === 'reservationUpdate') fetchReservations();
+    };
+    return () => bc.close();
+  }, []); // no jwtToken dependency, stays mounted
 
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
