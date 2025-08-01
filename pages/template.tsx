@@ -65,8 +65,9 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
         { role: 'assistant', content: spokenResponse || '⚠️ Viv had trouble replying.' }
       ]);
 
-      // Broadcast reservation updates
-      if (aiData.type && aiData.type.toLowerCase().includes('complete')) {
+      // Broadcast reservation updates for all modifying actions
+      const broadcastableTypes = ['reservation.complete', 'reservation.changed', 'reservation.cancelled'];
+      if (aiData.type && broadcastableTypes.includes(aiData.type.toLowerCase())) {
         console.log('[DEBUG] Broadcasting reservation update from VivAChat');
         broadcastRef.current?.postMessage({ type: 'reservationUpdate', timestamp: Date.now() });
       }
