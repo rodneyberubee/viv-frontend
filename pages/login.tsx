@@ -1,9 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+
+  // Clear old session
+  useEffect(() => {
+    localStorage.removeItem('jwtToken');
+  }, []);
+
+  // Auto-redirect if already logged in
+  useEffect(() => {
+    const token = localStorage.getItem('jwtToken');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload?.restaurantId && Date.now() < payload.exp * 1000) {
+          window.location.href = `/dashboard/${payload.restaurantId}`;
+        }
+      } catch {
+        localStorage.removeItem('jwtToken');
+      }
+    }
+  }, []);
 
   const handleLogin = async () => {
     if (!email) {
@@ -23,7 +43,7 @@ const LoginPage = () => {
 
       const data = await res.json();
       if (res.ok) {
-        setMessage('Check your email for a login link!');
+        setMessage('Check your email for a login link! (Check spam if not received)');
       } else {
         setMessage(data.error || 'Login failed. Please try again.');
       }
