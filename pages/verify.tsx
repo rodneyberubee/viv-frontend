@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 
+const parseJwt = (token: string) => {
+  try {
+    return JSON.parse(atob(token.split('.')[1]));
+  } catch {
+    return null;
+  }
+};
+
 const VerifyPage = () => {
   const router = useRouter();
   const { token } = router.query;
@@ -20,15 +28,18 @@ const VerifyPage = () => {
         });
 
         const data = await res.json();
-        if (res.ok) {
-          // Save JWT/session to localStorage for protected routes
-          localStorage.setItem('viv_session', JSON.stringify(data.session));
+        if (res.ok && data.token) {
+          localStorage.setItem('jwtToken', data.token);
+
+          const decoded = parseJwt(data.token);
+          if (!decoded || !decoded.restaurantId) {
+            throw new Error('Invalid token payload');
+          }
 
           setStatus('success');
           setMessage('Login successful! Redirecting...');
-          // Redirect to dashboard after short delay
           setTimeout(() => {
-            router.push(`/dashboard/${data.session.restaurantId}`);
+            router.push(`/dashboard/${decoded.restaurantId}`);
           }, 1500);
         } else {
           setStatus('error');
