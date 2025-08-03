@@ -31,15 +31,30 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
       const aiData = await aiResponse.json();
 
       if (!aiResponse.ok && !aiData.type) {
-        setMessages(prev => [...prev, { role: 'assistant', content: aiData.error || '⚠️ Something went wrong.' }]);
+        setMessages(prev => [
+          ...prev,
+          { role: 'assistant', content: aiData.error || '⚠️ Something went wrong.' }
+        ]);
         return;
       }
 
-      // Display AI response directly
-      setMessages(prev => [
-        ...prev,
-        { role: 'assistant', content: aiData.content || '⚠️ Viv had trouble replying.' }
-      ]);
+      // Attempt to call speakViv for extended response (if needed)
+      let spokenResponse = '';
+      try {
+        const speakResponse = await fetch(`https://api.vivaitable.com/api/speakViv/${String(restaurantId)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parsed: aiData.parsed || {} })
+        });
+        const speakData = await speakResponse.json();
+        spokenResponse = speakData.spokenResponse || '';
+      } catch (err) {
+        console.warn('[WARN] speakViv call failed:', err);
+      }
+
+      // Display AI response with fallback to aiData.content
+      const displayResponse = spokenResponse || aiData.content || '⚠️ Viv had trouble replying.';
+      setMessages(prev => [...prev, { role: 'assistant', content: displayResponse }]);
     } catch (error) {
       console.error('[ERROR] sendMessage failed:', error);
       setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Sorry, something went wrong.' }]);
