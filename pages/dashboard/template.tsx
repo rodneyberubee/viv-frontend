@@ -34,7 +34,7 @@ const headerLabels: Record<string, string> = {
 };
 
 const editableFields = ['date', 'timeSlot', 'name', 'partySize', 'contactInfo', 'status', 'confirmationCode'];
-const daysOfWeek = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
@@ -45,6 +45,7 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
     DateTime.now().setZone('America/Los_Angeles').startOf('day')
   );
   const broadcastRef = useRef<BroadcastChannel | null>(null);
+  const lastRefreshRef = useRef<number>(0);
 
   const isTokenExpired = (token: string) => {
     const decoded = parseJwt(token);
@@ -178,18 +179,27 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
     return () => bc.close();
   }, [restaurantId]);
 
-  // NEW: Poll refreshFlag endpoint
+  // NEW: Poll refreshFlag endpoint with debounce
   useEffect(() => {
     if (!jwtToken) return;
     const interval = setInterval(async () => {
       try {
+        const now = Date.now();
+        if (now - lastRefreshRef.current < 2000) return; // debounce: 2s
         const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/refreshFlag`, {
           headers: { Authorization: `Bearer ${jwtToken}` },
         });
         const data = await res.json();
         if (data.refresh === 1) {
           console.log('[DEBUG] Refresh flag received, refreshing reservations.');
+          lastRefreshRef.current = now;
           await fetchReservations();
+
+          // Optional: reset refresh flag in backend
+          await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/resetRefreshFlag`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${jwtToken}` },
+          });
         }
       } catch (err) {
         console.error('[ERROR] Polling refresh flag failed:', err);
@@ -268,3 +278,8 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
   return (
     <div className="flex min-h-screen bg-gray-100">
       {/* ...rest of template unchanged */}
+    </div>
+  );
+};
+
+export default DashboardTemplate;
