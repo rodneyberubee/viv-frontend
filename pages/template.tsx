@@ -69,7 +69,11 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
       const broadcastableTypes = ['reservation.complete', 'reservation.changed', 'reservation.cancelled'];
       if (aiData.type && broadcastableTypes.includes(aiData.type.toLowerCase())) {
         console.log('[DEBUG] Broadcasting reservation update from VivAChat');
-        broadcastRef.current?.postMessage({ type: 'reservationUpdate', timestamp: Date.now() });
+        broadcastRef.current?.postMessage({ 
+          type: aiData.type.toLowerCase(), 
+          restaurantId,
+          timestamp: Date.now() 
+        });
       }
 
       setLastAction({ type: aiData.type, confirmationCode: aiData.confirmationCode });
