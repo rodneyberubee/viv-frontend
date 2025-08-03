@@ -124,7 +124,7 @@ export default async function handler(req, res) {
     console.log('[speakViv] 🧾 Payload body:', JSON.stringify(body, null, 2));
     console.log('[speakViv] ⏰ Hours debug - openTime:', body.openTime || 'MISSING', 'closeTime:', body.closeTime || 'MISSING');
 
-    // Ensure openTime/closeTime are always visible to GPT (fallback from nested parsed if needed)
+    // Fallback: promote hours from parsed if missing at root
     if (!body.openTime && body.parsed?.openTime) {
       console.warn('[speakViv] Adding openTime from parsed');
       body.openTime = body.parsed.openTime;
@@ -132,6 +132,13 @@ export default async function handler(req, res) {
     if (!body.closeTime && body.parsed?.closeTime) {
       console.warn('[speakViv] Adding closeTime from parsed');
       body.closeTime = body.parsed.closeTime;
+    }
+
+    if (!body.openTime || !body.closeTime) {
+      console.warn('[speakViv] ⚠️ Hours still missing before sending to GPT:', {
+        openTime: body.openTime,
+        closeTime: body.closeTime
+      });
     }
 
     const structuredText = `The backend responded with this structured object:\n\n${JSON.stringify(body, null, 2)}\n\nPlease respond appropriately to the customer.`;
