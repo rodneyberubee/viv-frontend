@@ -25,6 +25,7 @@ Here are the possible types and what you’ll receive:
 
 1. "reservation.complete"
 → Let the user know they’re booked. Include the name, date, time, party size, and confirmation code.
+→ If openTime and closeTime are present, include them naturally: “We’re open from 10:00 AM to 9:00 PM.”
 
 2. "reservation.cancelled"
 → Confirm the cancellation. Be polite and supportive.
@@ -33,7 +34,7 @@ Here are the possible types and what you’ll receive:
 → Let the user know the new date and time. If openTime and closeTime are present, include them naturally: “We’re open from 10:00 AM to 9:00 PM.”
 
 4. "availability.available"
-→ Let them know the time is available and how many spots remain.
+→ Let them know the time is available and how many spots remain. If openTime and closeTime are present, include them naturally.
 
 5. "availability.unavailable"
 → Say the time isn’t available. Suggest before/after options if provided in the "alternatives" object (before/after times).
@@ -122,9 +123,12 @@ export default async function handler(req, res) {
     console.log('[speakViv] 🚦 Type:', body.type);
     console.log('[speakViv] 🧾 Payload body:', JSON.stringify(body, null, 2));
 
+    // Highlight if openTime/closeTime are present or missing
+    console.log('[speakViv] ⏰ Hours debug - openTime:', body.openTime || 'MISSING', 'closeTime:', body.closeTime || 'MISSING');
+
     const structuredText = `The backend responded with this structured object:\n\n${JSON.stringify(body, null, 2)}\n\nPlease respond appropriately to the customer.`;
 
-    console.log('[speakViv] 📨 Incoming structured payload:', structuredText);
+    console.log('[speakViv] 📨 Incoming structured payload to OpenAI:', structuredText);
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -137,6 +141,7 @@ export default async function handler(req, res) {
 
     const response = completion.choices?.[0]?.message?.content?.trim() || '';
     console.log('[speakViv] 🧠 Raw completion object:', JSON.stringify(completion, null, 2));
+    console.log('[speakViv] 🗣 Final spokenResponse:', response);
 
     return res.status(200).json({ spokenResponse: response });
   } catch (error) {
