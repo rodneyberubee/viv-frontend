@@ -6,7 +6,10 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [lastAction, setLastAction] = useState<any>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const broadcast = new BroadcastChannel('reservations');
 
   const scrollToBottom = () => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   useEffect(scrollToBottom, [messages, isLoading]);
@@ -21,7 +24,9 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
     setIsLoading(true);
 
     try {
-      const requestPayload = { messages: updatedMessages };
+      const requestPayload: { messages: any[]; context?: any } = { messages: updatedMessages };
+      if (lastAction) requestPayload.context = lastAction;
+
       const aiResponse = await fetch(`https://api.vivaitable.com/api/askViv/${String(restaurantId)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -31,32 +36,31 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
       const aiData = await aiResponse.json();
 
       if (!aiResponse.ok && !aiData.type) {
-        setMessages(prev => [
-          ...prev,
-          { role: 'assistant', content: aiData.error || '⚠️ Something went wrong.' }
-        ]);
+        setMessages(prev => [...prev, { role: 'assistant', content: aiData.error || '⚠️ Something went wrong.' }]);
         return;
       }
 
-      // Attempt to call speakViv for extended response (if needed)
-      let spokenResponse = '';
-      try {
-        const speakResponse = await fetch(`https://api.vivaitable.com/api/speakViv/${String(restaurantId)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parsed: aiData.parsed || {} })
-        });
-        const speakData = await speakResponse.json();
-        spokenResponse = speakData.spokenResponse || '';
-      } catch (err) {
-        console.warn('[WARN] speakViv call failed:', err);
+      const speakResponse = await fetch('/api/speakViv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(aiData)
+      });
+
+      const speakResult = await speakResponse.json();
+      const spokenResponse = speakResult.spokenResponse;
+
+      setMessages(prev => [
+        ...prev,
+        { role: 'assistant', content: spokenResponse || '⚠️ Viv had trouble replying.' }
+      ]);
+
+      if (aiData.type && aiData.type.toLowerCase().includes('complete')) {
+        console.log('[DEBUG] Broadcasting reservation update');
+        broadcast.postMessage({ type: 'reservationUpdate', timestamp: Date.now() });
       }
 
-      // Display AI response with fallback to aiData.content
-      const displayResponse = spokenResponse || aiData.content || '⚠️ Viv had trouble replying.';
-      setMessages(prev => [...prev, { role: 'assistant', content: displayResponse }]);
+      setLastAction({ type: aiData.type, confirmationCode: aiData.confirmationCode });
     } catch (error) {
-      console.error('[ERROR] sendMessage failed:', error);
       setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Sorry, something went wrong.' }]);
     } finally {
       setIsLoading(false);
@@ -79,6 +83,11 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
                   ? 'bg-white text-gray-900'
                   : 'bg-orange-100 text-gray-900'
               }`}
+              style={{
+                transition: 'all 0.3s ease-in-out',
+                fontFamily: `'SF Pro Rounded', 'Arial Rounded MT', 'Helvetica Neue', sans-serif`,
+                fontWeight: 400
+              }}
             >
               {msg.content}
             </div>
