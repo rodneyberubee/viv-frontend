@@ -170,7 +170,7 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
     broadcastRef.current = bc;
     bc.onmessage = (e) => {
       console.log('[DEBUG] Broadcast received:', e.data);
-      const validTypes = ['reservation.complete', 'reservation.changed', 'reservation.cancelled'];
+      const validTypes = ['reservation.complete', 'reservation.change', 'reservation.cancel'];
       if (validTypes.includes(e.data.type) && e.data.restaurantId === restaurantId) {
         fetchReservations();
       }
