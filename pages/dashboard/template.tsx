@@ -227,4 +227,10 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
             <input type="text" name={key} value={value || ''} onChange={handleConfigChange} className="w-2/3 border p-1" />
           </div>
         ))}
-        <button onClick={updateConfig} className="mt-2 px-4 py-2 bg-green-600 text-white rounded">Update Config</b
+        <button onClick={updateConfig} className="mt-2 px-4 py-2 bg-green-600 text-white rounded">Update Config</button>
+      </div>
+    </div>
+  );
+};
+
+export default DashboardTemplate;
