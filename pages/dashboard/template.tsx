@@ -149,6 +149,27 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
 
   useEffect(() => { if (jwtToken) { fetchConfig(); fetchReservations(); } }, [jwtToken, config.timeZone, selectedDate]);
 
+  // 🔹 Polling for refresh flag
+  useEffect(() => {
+    if (!jwtToken) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/refreshFlag`, {
+          headers: { Authorization: `Bearer ${jwtToken}` },
+        });
+        const data = await res.json();
+        if (data.refresh === 1) {
+          console.log('[DEBUG] Refresh flag detected, refetching data...');
+          fetchConfig();
+          fetchReservations();
+        }
+      } catch (err) {
+        console.error('[ERROR] Polling refresh flag failed:', err);
+      }
+    }, 5000); // Poll every 5 seconds
+    return () => clearInterval(interval);
+  }, [jwtToken, restaurantId]);
+
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => { const { name, value } = e.target; setConfig((prev) => ({ ...prev, [name]: value })); };
   const handleReservationEdit = (e: React.ChangeEvent<HTMLInputElement>, id: string | undefined, index: number) => { const { name, value } = e.target; setReservations((prev) => prev.map((res, i) => res.id === id || (!res.id && i === index) ? { ...res, [name]: value } : res)); };
 
