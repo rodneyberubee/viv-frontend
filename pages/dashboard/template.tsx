@@ -53,11 +53,13 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
     if (!decoded) return;
     const expiresIn = decoded.exp * 1000 - Date.now();
     const refreshBefore = expiresIn - 5 * 60 * 1000;
+    console.log('[DEBUG] Scheduling token refresh in (ms):', refreshBefore);
     if (refreshBefore > 0) {
       setTimeout(async () => {
         try {
           const res = await fetch('https://api.vivaitable.com/api/auth/refresh', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
           const data = await res.json();
+          console.log('[DEBUG] Refresh response:', data);
           if (data.token) {
             localStorage.setItem('jwtToken', data.token);
             setJwtToken(data.token);
@@ -66,7 +68,8 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
             localStorage.removeItem('jwtToken');
             window.location.href = '/login';
           }
-        } catch {
+        } catch (err) {
+          console.error('[ERROR] Refresh failed:', err);
           localStorage.removeItem('jwtToken');
           window.location.href = '/login';
         }
@@ -75,26 +78,32 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
   };
 
   useEffect(() => {
+    console.log('[DEBUG] DashboardTemplate mounted with restaurantId:', restaurantId);
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get('token');
     const storedJwt = localStorage.getItem('jwtToken');
+    console.log('[DEBUG] URL token:', urlToken, 'Stored token:', storedJwt);
 
     async function verifyToken(token: string) {
+      console.log('[DEBUG] Verifying token...');
       try {
         const res = await fetch('https://api.vivaitable.com/api/auth/login/verify', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }),
         });
         const data = await res.json();
+        console.log('[DEBUG] /login/verify response:', data);
         if (data.token) {
           localStorage.setItem('jwtToken', data.token);
           setJwtToken(data.token);
           scheduleTokenRefresh(data.token);
           window.history.replaceState({}, '', window.location.pathname);
         } else {
+          console.warn('[WARN] Token verification failed.');
           localStorage.removeItem('jwtToken');
           window.location.href = '/login';
         }
-      } catch {
+      } catch (err) {
+        console.error('[ERROR] Verifying token failed:', err);
         localStorage.removeItem('jwtToken');
         window.location.href = '/login';
       } finally { setLoading(false); }
@@ -102,19 +111,25 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
 
     if (urlToken) verifyToken(urlToken);
     else if (storedJwt && !isTokenExpired(storedJwt)) {
+      console.log('[DEBUG] Using stored token');
       setJwtToken(storedJwt);
       scheduleTokenRefresh(storedJwt);
       setLoading(false);
     } else {
+      console.warn('[WARN] No valid token found. Redirecting to login.');
       localStorage.removeItem('jwtToken');
       window.location.href = '/login';
     }
-  }, []);
+  }, [restaurantId]);
 
   async function safeFetch(url: string, options: any) {
+    console.log('[DEBUG] Fetching:', url);
     const res = await fetch(url, options);
     if (res.status === 401) {
-      localStorage.removeItem('jwtToken'); window.location.href = '/login'; throw new Error('Unauthorized');
+      console.warn('[WARN] Unauthorized. Redirecting to login.');
+      localStorage.removeItem('jwtToken'); 
+      window.location.href = '/login'; 
+      throw new Error('Unauthorized');
     }
     return res;
   }
@@ -122,8 +137,10 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
   async function fetchConfig() {
     if (!jwtToken) return;
     try {
+      console.log('[DEBUG] Fetching config...');
       const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/config`, { headers: { Authorization: `Bearer ${jwtToken}` } });
       const data = await res.json();
+      console.log('[DEBUG] Config fetched:', data);
       setConfig(data.config || data);
     } catch (err) { console.error('[ERROR] Fetching config failed:', err); }
   }
@@ -131,21 +148,30 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
   async function fetchReservations() {
     if (!jwtToken) return;
     try {
+      console.log('[DEBUG] Fetching reservations...');
       const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/reservations`, { headers: { Authorization: `Bearer ${jwtToken}` } });
       const data = await res.json();
+      console.log('[DEBUG] Reservations fetched:', data);
       const reservationsFromServer = data.reservations || [];
       const blankRowTemplate = editableFields.reduce((acc, key) => { acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : ''; return acc; }, { restaurantId } as any);
       setReservations([...reservationsFromServer, blankRowTemplate]);
     } catch (err) { console.error('[ERROR] Fetching reservations failed:', err); }
   }
 
-  useEffect(() => { if (jwtToken) { fetchConfig(); fetchReservations(); } }, [jwtToken, config.timeZone, selectedDate]);
+  useEffect(() => { 
+    if (jwtToken) { 
+      console.log('[DEBUG] Token present. Fetching config & reservations...');
+      fetchConfig(); 
+      fetchReservations(); 
+    } 
+  }, [jwtToken, config.timeZone, selectedDate]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return; // SSR guard
     const bc = new BroadcastChannel('reservations');
     broadcastRef.current = bc;
     bc.onmessage = (e) => {
+      console.log('[DEBUG] Broadcast received:', e.data);
       const validTypes = ['reservation.complete', 'reservation.change', 'reservation.cancel'];
       if (validTypes.includes(e.data.type) && e.data.restaurantId === restaurantId) fetchReservations();
     };
@@ -163,6 +189,8 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
 
   const filteredReservations = reservations.filter(r => { const dt = DateTime.fromISO(r.date, { zone: restaurantTz }); return dt.isValid && dt.hasSame(selectedDate, 'day') && ((r.name && r.timeSlot) || r.status === 'blocked'); }).sort((a, b) => DateTime.fromISO(`${a.date}T${a.timeSlot || '00:00'}`, { zone: restaurantTz }).toMillis() - DateTime.fromISO(`${b.date}T${b.timeSlot || '00:00'}`, { zone: restaurantTz }).toMillis());
 
+  console.log('[DEBUG] Render state:', { loading, jwtToken, config, reservationsCount: reservations.length });
+
   const today = DateTime.now().setZone(restaurantTz).startOf('day');
   const weekStart = today.startOf('week'); const weekEnd = today.endOf('week');
   const monthStart = today.startOf('month'); const monthEnd = today.endOf('month');
@@ -179,7 +207,7 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
   return (
     <div className="flex min-h-screen bg-gray-100">
       {/* --- Sidebar, Metrics, Reservations Table, and Config --- */}
-      {/* [Restored full UI from template.tsx here] */}
+      <h1 className="m-auto text-2xl">Dashboard Loaded for {restaurantId}</h1>
     </div>
   );
 };
