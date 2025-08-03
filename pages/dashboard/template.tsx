@@ -205,9 +205,18 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
   if (!jwtToken) return <div className="p-8 text-center text-red-600">Authentication failed. Please log in again.</div>;
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      {/* --- Sidebar, Metrics, Reservations Table, and Config --- */}
-      <h1 className="m-auto text-2xl">Dashboard Loaded for {restaurantId}</h1>
+    <div className="flex flex-col min-h-screen bg-gray-100 p-4 space-y-4">
+      <h1 className="text-2xl font-bold">Dashboard Loaded for {restaurantId}</h1>
+
+      {/* Debug view for live data */}
+      <div className="bg-white p-4 rounded shadow">
+        <h2 className="text-lg font-semibold mb-2">Config (Debug)</h2>
+        <pre className="text-xs bg-gray-100 p-2 rounded">{JSON.stringify(config, null, 2)}</pre>
+      </div>
+      <div className="bg-white p-4 rounded shadow">
+        <h2 className="text-lg font-semibold mb-2">Reservations (Debug)</h2>
+        <pre className="text-xs bg-gray-100 p-2 rounded">{JSON.stringify(reservations, null, 2)}</pre>
+      </div>
     </div>
   );
 };
