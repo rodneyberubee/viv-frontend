@@ -33,12 +33,18 @@ const headerLabels: Record<string, string> = {
 
 const editableFields = ['date', 'timeSlot', 'name', 'partySize', 'contactInfo', 'status', 'confirmationCode'];
 
-const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
+export default function DashboardTemplate({ restaurantId }: DashboardProps) {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [config, setConfig] = useState<Config>({ maxReservations: 0, futureCutoff: 0, timeZone: 'America/Los_Angeles' });
+  const [config, setConfig] = useState<Config>({
+    maxReservations: 0,
+    futureCutoff: 0,
+    timeZone: 'America/Los_Angeles',
+  });
   const [reservations, setReservations] = useState<any[]>([]);
-  const [selectedDate, setSelectedDate] = useState<DateTime>(DateTime.now().setZone('America/Los_Angeles').startOf('day'));
+  const [selectedDate, setSelectedDate] = useState<DateTime>(
+    DateTime.now().setZone('America/Los_Angeles').startOf('day')
+  );
   const lastRefreshRef = useRef<number>(0);
 
   const isTokenExpired = (token: string) => {
@@ -54,7 +60,10 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
     if (refreshBefore > 0) {
       setTimeout(async () => {
         try {
-          const res = await fetch('https://api.vivaitable.com/api/auth/refresh', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+          const res = await fetch('https://api.vivaitable.com/api/auth/refresh', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          });
           const data = await res.json();
           if (data.token) {
             localStorage.setItem('jwtToken', data.token);
@@ -80,7 +89,9 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
     async function verifyToken(token: string) {
       try {
         const res = await fetch('https://api.vivaitable.com/api/auth/login/verify', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }),
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
         });
         const data = await res.json();
         if (data.token) {
@@ -95,7 +106,9 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
       } catch {
         localStorage.removeItem('jwtToken');
         window.location.href = '/login';
-      } finally { setLoading(false); }
+      } finally {
+        setLoading(false);
+      }
     }
 
     if (urlToken) verifyToken(urlToken);
@@ -122,69 +135,155 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
   async function fetchConfig() {
     if (!jwtToken) return;
     try {
-      const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/config`, { headers: { Authorization: `Bearer ${jwtToken}` } });
+      const res = await safeFetch(
+        `https://api.vivaitable.com/api/dashboard/${restaurantId}/config`,
+        { headers: { Authorization: `Bearer ${jwtToken}` } }
+      );
       const data = await res.json();
       setConfig(data.config || data);
-    } catch (err) { console.error('[ERROR] Fetching config failed:', err); }
+    } catch (err) {
+      console.error('[ERROR] Fetching config failed:', err);
+    }
   }
 
   async function fetchReservations() {
     if (!jwtToken) return;
     try {
-      const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/reservations`, { headers: { Authorization: `Bearer ${jwtToken}` } });
+      const res = await safeFetch(
+        `https://api.vivaitable.com/api/dashboard/${restaurantId}/reservations`,
+        { headers: { Authorization: `Bearer ${jwtToken}` } }
+      );
       const data = await res.json();
       const reservationsFromServer = data.reservations || [];
-      const blankRowTemplate = editableFields.reduce((acc, key) => { acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : ''; return acc; }, { restaurantId } as any);
+      const blankRowTemplate = editableFields.reduce((acc, key) => {
+        acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
+        return acc;
+      }, { restaurantId } as any);
       setReservations([...reservationsFromServer, blankRowTemplate]);
-    } catch (err) { console.error('[ERROR] Fetching reservations failed:', err); }
+    } catch (err) {
+      console.error('[ERROR] Fetching reservations failed:', err);
+    }
   }
 
-  useEffect(() => { if (jwtToken) { fetchConfig(); fetchReservations(); } }, [jwtToken, config.timeZone, selectedDate]);
+  useEffect(() => {
+    if (jwtToken) {
+      fetchConfig();
+      fetchReservations();
+    }
+  }, [jwtToken, config.timeZone, selectedDate]);
 
-  const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => { const { name, value } = e.target; setConfig((prev) => ({ ...prev, [name]: value })); };
-  const handleReservationEdit = (e: React.ChangeEvent<HTMLInputElement>, id: string | undefined, index: number) => { const { name, value } = e.target; setReservations((prev) => prev.map((res, i) => res.id === id || (!res.id && i === index) ? { ...res, [name]: value } : res)); };
+  const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setConfig((prev) => ({ ...prev, [name]: value }));
+  };
+  const handleReservationEdit = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    id: string | undefined,
+    index: number
+  ) => {
+    const { name, value } = e.target;
+    setReservations((prev) =>
+      prev.map((res, i) =>
+        res.id === id || (!res.id && i === index) ? { ...res, [name]: value } : res
+      )
+    );
+  };
 
   const updateConfig = async () => {
     if (!jwtToken) return;
     try {
-      await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateConfig`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
-        body: JSON.stringify({ ...config, restaurantId }),
-      });
+      await safeFetch(
+        `https://api.vivaitable.com/api/dashboard/${restaurantId}/updateConfig`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${jwtToken}`,
+          },
+          body: JSON.stringify({ ...config, restaurantId }),
+        }
+      );
       alert('Config updated');
-    } catch (err) { console.error('[ERROR] Updating config failed:', err); }
+    } catch (err) {
+      console.error('[ERROR] Updating config failed:', err);
+    }
   };
 
   const updateReservations = async () => {
     if (!jwtToken) return;
     try {
-      const payload = reservations.filter((res) => res.confirmationCode)
-        .map(({ id, ...fields }) => ({ recordId: id, updatedFields: { ...fields, restaurantId } }));
-      await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
-        body: JSON.stringify(payload),
-      });
+      const payload = reservations
+        .filter((res) => res.confirmationCode)
+        .map(({ id, ...fields }) => ({
+          recordId: id,
+          updatedFields: { ...fields, restaurantId },
+        }));
+      await safeFetch(
+        `https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${jwtToken}`,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
       alert('Reservations updated');
-    } catch (err) { console.error('[ERROR] Updating reservations failed:', err); }
+    } catch (err) {
+      console.error('[ERROR] Updating reservations failed:', err);
+    }
   };
 
   const restaurantTz = config.timeZone || 'America/Los_Angeles';
 
-  const filteredReservations = reservations.filter(r => {
-    const dt = DateTime.fromISO(r.date, { zone: restaurantTz });
-    return dt.isValid && dt.hasSame(selectedDate, 'day') && ((r.name && r.timeSlot) || r.status === 'blocked');
-  }).sort((a, b) => DateTime.fromISO(`${a.date}T${a.timeSlot || '00:00'}`, { zone: restaurantTz }).toMillis() - DateTime.fromISO(`${b.date}T${b.timeSlot || '00:00'}`, { zone: restaurantTz }).toMillis());
+  const filteredReservations = reservations
+    .filter((r) => {
+      const dt = DateTime.fromISO(r.date, { zone: restaurantTz });
+      return (
+        dt.isValid &&
+        dt.hasSame(selectedDate, 'day') &&
+        ((r.name && r.timeSlot) || r.status === 'blocked')
+      );
+    })
+    .sort(
+      (a, b) =>
+        DateTime.fromISO(`${a.date}T${a.timeSlot || '00:00'}`, {
+          zone: restaurantTz,
+        }).toMillis() -
+        DateTime.fromISO(`${b.date}T${b.timeSlot || '00:00'}`, {
+          zone: restaurantTz,
+        }).toMillis()
+    );
 
   const today = DateTime.now().setZone(restaurantTz).startOf('day');
-  const weekStart = today.startOf('week'); const weekEnd = today.endOf('week');
-  const monthStart = today.startOf('month'); const monthEnd = today.endOf('month');
-  const validForMetrics = reservations.filter(r => r.status?.toLowerCase() === 'confirmed');
-  const todayCount = validForMetrics.filter(r => DateTime.fromISO(r.date, { zone: restaurantTz }).hasSame(today, 'day')).length;
-  const weekCount = validForMetrics.filter(r => { const d = DateTime.fromISO(r.date, { zone: restaurantTz }); return d >= weekStart && d <= weekEnd; }).length;
-  const monthCount = validForMetrics.filter(r => { const d = DateTime.fromISO(r.date, { zone: restaurantTz }); return d >= monthStart && d <= monthEnd; }).length;
+  const weekStart = today.startOf('week');
+  const weekEnd = today.endOf('week');
+  const monthStart = today.startOf('month');
+  const monthEnd = today.endOf('month');
+  const validForMetrics = reservations.filter(
+    (r) => r.status?.toLowerCase() === 'confirmed'
+  );
+  const todayCount = validForMetrics.filter((r) =>
+    DateTime.fromISO(r.date, { zone: restaurantTz }).hasSame(today, 'day')
+  ).length;
+  const weekCount = validForMetrics.filter((r) => {
+    const d = DateTime.fromISO(r.date, { zone: restaurantTz });
+    return d >= weekStart && d <= weekEnd;
+  }).length;
+  const monthCount = validForMetrics.filter((r) => {
+    const d = DateTime.fromISO(r.date, { zone: restaurantTz });
+    return d >= monthStart && d <= monthEnd;
+  }).length;
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>;
-  if (!jwtToken) return <div className="p-8 text-center text-red-600">Authentication failed. Please log in again.</div>;
+  if (loading)
+    return <div className="p-8 text-center">Loading...</div>;
+  if (!jwtToken)
+    return (
+      <div className="p-8 text-center text-red-600">
+        Authentication failed. Please log in again.
+      </div>
+    );
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 p-4 space-y-4">
@@ -201,21 +300,40 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
       <div className="bg-white p-4 rounded shadow overflow-auto">
         <table className="w-full text-left">
           <thead>
-            <tr>{Object.values(headerLabels).map((label) => <th key={label} className="p-2 border">{label}</th>)}</tr>
+            <tr>
+              {Object.values(headerLabels).map((label) => (
+                <th key={label} className="p-2 border">
+                  {label}
+                </th>
+              ))}
+            </tr>
           </thead>
           <tbody>
             {filteredReservations.map((res, index) => (
               <tr key={res.id || index}>
                 {editableFields.map((field) => (
                   <td key={field} className="p-2 border">
-                    <input type="text" name={field} value={res[field] || ''} onChange={(e) => handleReservationEdit(e, res.id, index)} className="w-full border p-1" />
+                    <input
+                      type="text"
+                      name={field}
+                      value={res[field] || ''}
+                      onChange={(e) =>
+                        handleReservationEdit(e, res.id, index)
+                      }
+                      className="w-full border p-1"
+                    />
                   </td>
                 ))}
               </tr>
             ))}
           </tbody>
         </table>
-        <button onClick={updateReservations} className="mt-2 px-4 py-2 bg-blue-600 text-white rounded">Update Reservations</button>
+        <button
+          onClick={updateReservations}
+          className="mt-2 px-4 py-2 bg-orange-500 text-white rounded shadow hover:bg-orange-600"
+        >
+          Update Reservations
+        </button>
       </div>
 
       {/* Config Editor */}
@@ -224,13 +342,22 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
         {Object.entries(config).map(([key, value]) => (
           <div key={key} className="flex space-x-2 mb-2">
             <label className="w-1/3">{key}</label>
-            <input type="text" name={key} value={value || ''} onChange={handleConfigChange} className="w-2/3 border p-1" />
+            <input
+              type="text"
+              name={key}
+              value={value || ''}
+              onChange={handleConfigChange}
+              className="w-2/3 border p-1"
+            />
           </div>
         ))}
-        <button onClick={updateConfig} className="mt-2 px-4 py-2 bg-green-600 text-white rounded">Update Config</button>
+        <button
+          onClick={updateConfig}
+          className="mt-2 px-4 py-2 bg-orange-500 text-white rounded shadow hover:bg-orange-600"
+        >
+          Update Config
+        </button>
       </div>
     </div>
   );
-};
-
-export default DashboardTemplate;
+}
