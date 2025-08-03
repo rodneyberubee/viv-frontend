@@ -6,24 +6,10 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [lastAction, setLastAction] = useState<any>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const broadcastRef = useRef<BroadcastChannel | null>(null); // persistent reference
 
   const scrollToBottom = () => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   useEffect(scrollToBottom, [messages, isLoading]);
-
-  // Initialize broadcast channel only once
-  useEffect(() => {
-    const bc = new BroadcastChannel('reservations');
-    broadcastRef.current = bc;
-    console.log('[DEBUG] VivAChatTemplate BroadcastChannel initialized');
-
-    return () => {
-      console.log('[DEBUG] VivAChatTemplate BroadcastChannel closed');
-      bc.close();
-    };
-  }, []);
 
   const sendMessage = async () => {
     if (!input.trim() || !restaurantId) return;
@@ -35,9 +21,7 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
     setIsLoading(true);
 
     try {
-      const requestPayload: { messages: any[]; context?: any } = { messages: updatedMessages };
-      if (lastAction) requestPayload.context = lastAction;
-
+      const requestPayload = { messages: updatedMessages };
       const aiResponse = await fetch(`https://api.vivaitable.com/api/askViv/${String(restaurantId)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -51,32 +35,11 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
         return;
       }
 
-      const speakResponse = await fetch('/api/speakViv', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(aiData)
-      });
-
-      const speakResult = await speakResponse.json();
-      const spokenResponse = speakResult.spokenResponse;
-
+      // Display AI response directly
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: spokenResponse || '⚠️ Viv had trouble replying.' }
+        { role: 'assistant', content: aiData.content || '⚠️ Viv had trouble replying.' }
       ]);
-
-      // Broadcast reservation updates for all modifying actions
-      const broadcastableTypes = ['reservation.complete', 'reservation.change', 'reservation.cancel'];
-      if (aiData.type && broadcastableTypes.includes(aiData.type.toLowerCase())) {
-        console.log('[DEBUG] Broadcasting reservation update from VivAChat');
-        broadcastRef.current?.postMessage({ 
-          type: aiData.type.toLowerCase(), 
-          restaurantId,
-          timestamp: Date.now() 
-        });
-      }
-
-      setLastAction({ type: aiData.type, confirmationCode: aiData.confirmationCode });
     } catch (error) {
       console.error('[ERROR] sendMessage failed:', error);
       setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Sorry, something went wrong.' }]);
@@ -101,11 +64,6 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
                   ? 'bg-white text-gray-900'
                   : 'bg-orange-100 text-gray-900'
               }`}
-              style={{
-                transition: 'all 0.3s ease-in-out',
-                fontFamily: `'SF Pro Rounded', 'Arial Rounded MT', 'Helvetica Neue', sans-serif`,
-                fontWeight: 400
-              }}
             >
               {msg.content}
             </div>
