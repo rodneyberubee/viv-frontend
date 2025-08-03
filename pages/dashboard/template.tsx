@@ -170,10 +170,13 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
     broadcastRef.current = bc;
     bc.onmessage = (e) => {
       console.log('[DEBUG] Broadcast received:', e.data);
-      if (e.data.type === 'reservationUpdate') fetchReservations();
+      const validTypes = ['reservation.complete', 'reservation.changed', 'reservation.cancelled'];
+      if (validTypes.includes(e.data.type) && e.data.restaurantId === restaurantId) {
+        fetchReservations();
+      }
     };
     return () => bc.close();
-  }, []); // no jwtToken dependency, stays mounted
+  }, [restaurantId]); // now filters by restaurant
 
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
