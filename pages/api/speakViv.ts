@@ -30,7 +30,7 @@ Here are the possible types and what you’ll receive:
 → Confirm the cancellation. Be polite and supportive.
 
 3. "reservation.changed"
-→ Let the user know the new date and time.
+→ Let the user know the new date and time. If openTime and closeTime are present, include them naturally: “We’re open from 10:00 AM to 9:00 PM.”
 
 4. "availability.available"
 → Let them know the time is available and how many spots remain.
@@ -98,7 +98,7 @@ If type is:
 - When "alternatives" are present (before/after times), suggest them naturally: 
   * Example: “We’re booked at that time, but I can offer 7:15 or 7:45 instead.”
   * Only mention the times that are not null.
-- When "openTime" and "closeTime" are present, include them naturally: 
+- When "openTime" and "closeTime" are present, include them naturally in **all relevant responses** (including reservation.change): 
   * Example: “We’re open from 10:00 AM to 9:00 PM.”
   * If one is missing, only mention the one provided.
 
