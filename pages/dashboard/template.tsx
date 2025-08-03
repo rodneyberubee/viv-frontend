@@ -15,6 +15,7 @@ type DashboardProps = {
 type JWTPayload = { exp: number; restaurantId: string; email: string };
 
 const parseJwt = (token: string): JWTPayload | null => {
+  if (typeof window === 'undefined') return null; // SSR safety
   try {
     const base64 = token.split('.')[1];
     return JSON.parse(atob(base64));
@@ -167,6 +168,7 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
 
   // Persistent BroadcastChannel listener
   useEffect(() => {
+    if (typeof window === 'undefined') return; // SSR guard
     const bc = new BroadcastChannel('reservations');
     broadcastRef.current = bc;
     bc.onmessage = (e) => {
@@ -274,10 +276,11 @@ const DashboardTemplate: React.FC<DashboardProps> = ({ restaurantId }) => {
   const onDateChange = (e: React.ChangeEvent<HTMLInputElement>) => setSelectedDate(DateTime.fromISO(e.target.value, { zone: restaurantTz }));
 
   if (loading) return <div className="p-8 text-center">Loading...</div>;
+  if (!jwtToken) return <div className="p-8 text-center text-red-600">Authentication failed. Please log in again.</div>;
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      {/* ...rest of template unchanged */}
+    <div className="flex min-h-screen bg-gray-100 items-center justify-center">
+      <h1 className="text-xl font-bold">Viv Dashboard Loaded</h1>
     </div>
   );
 };
