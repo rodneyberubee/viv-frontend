@@ -77,11 +77,13 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   };
 
   // Verify token & refresh if needed
-  async function verifyToken(token: string) {
-    const decoded = parseJwt(token);
-    if (!decoded || Date.now() >= decoded.exp * 1000) {
-      token = await refreshToken(token) || '';
-      if (!token) return;
+  async function verifyToken(token: string, skipExpirationCheck = false) {
+    if (!skipExpirationCheck) {
+      const decoded = parseJwt(token);
+      if (!decoded || Date.now() >= decoded.exp * 1000) {
+        token = await refreshToken(token) || '';
+        if (!token) return;
+      }
     }
 
     try {
@@ -115,9 +117,14 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     const urlToken = params.get('token');
     const storedJwt = localStorage.getItem('jwtToken');
 
-    if (urlToken) verifyToken(urlToken);
-    else if (storedJwt) verifyToken(storedJwt);
-    else window.location.href = '/login';
+    if (urlToken) {
+      // Always trust new URL tokens first
+      verifyToken(urlToken, true);
+    } else if (storedJwt) {
+      verifyToken(storedJwt);
+    } else {
+      window.location.href = '/login';
+    }
 
     return () => {
       if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
