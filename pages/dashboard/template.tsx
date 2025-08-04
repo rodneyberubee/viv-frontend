@@ -37,7 +37,6 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   });
   const [reservations, setReservations] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<DateTime>(DateTime.now().startOf('day'));
-  const [selectedRows, setSelectedRows] = useState<number[]>([]);
 
   const aiLink = `https://vivaitable.com/${restaurantId}`;
   const copyToClipboard = async () => {
@@ -123,7 +122,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     // Convert Airtable "1"/"0" or boolean to strict boolean for UI
     const reservationsFromServer = (data.reservations || data || []).map((r: any) => ({
       ...r,
-      hidden: r.hidden === '1' || r.hidden === true, // treat "1" or true as hidden
+      const reservationsFromServer = data.reservations || data || [];
     }));
     setReservations(reservationsFromServer);
   } catch (err) {
@@ -168,8 +167,8 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     const newRow = editableFields.reduce((acc, key) => {
       acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
       return acc;
-    }, { restaurantId, hidden: '0' } as any); // hidden stored as "0"
-
+    }, { restaurantId } as any);
+    
     await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
@@ -192,7 +191,7 @@ const deleteSelectedRows = async () => {
   try {
     const payload = selectedRows.map((index) => ({
       recordId: reservations[index].id,
-      updatedFields: { hidden: '1', restaurantId }, // store as "1" instead of boolean
+      updatedFields: { restaurantId }, // store as "1" instead of boolean
     }));
 
     await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
@@ -241,8 +240,7 @@ const updateReservations = async () => {
       .map(({ id, rawConfirmationCode, dateFormatted, hidden, ...fields }) => ({
         recordId: id,
         updatedFields: { 
-          ...fields, 
-          hidden: hidden ? '1' : '0', // store as "1" or "0"
+          ...fields,
           restaurantId 
         },
       }));
@@ -259,10 +257,7 @@ const updateReservations = async () => {
   }
 };
 
-
-    const filteredReservations = reservations
-    .filter((r) => !r.hidden)
-    .filter((r) => {
+    const filteredReservations = reservations.filter((r) => {
       const dt = DateTime.fromISO(r.date);
       // Show all reservations for the selected day, even if blank or pending
       return dt.isValid && dt.hasSame(selectedDate, 'day');
@@ -319,11 +314,6 @@ const updateReservations = async () => {
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Reservations</h1>
           <div className="flex space-x-2">
-            {selectedRows.length > 0 && (
-              <button onClick={deleteSelectedRows} className="bg-red-500 text-white px-3 py-2 rounded shadow hover:bg-red-600">
-                Delete Selected
-              </button>
-            )}
             <button onClick={addNewRow} className="bg-gray-200 px-3 py-2 rounded shadow hover:bg-gray-300">
               Add New Row
             </button>
@@ -353,19 +343,6 @@ const updateReservations = async () => {
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-2">
-                  <input
-                    type="checkbox"
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedRows(filteredReservations.map((_, idx) => idx));
-                      } else {
-                        setSelectedRows([]);
-                      }
-                    }}
-                    checked={selectedRows.length === filteredReservations.length && filteredReservations.length > 0}
-                  />
-                </th>
                 {editableFields.map((key) =>
                   key === 'status' ? (
                     <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium relative group">
@@ -386,9 +363,6 @@ const updateReservations = async () => {
             <tbody>
               {filteredReservations.map((res, i) => (
                 <tr key={res.id || i} className="border-t hover:bg-gray-50">
-                  <td className="px-3 py-2">
-                    <input type="checkbox" checked={selectedRows.includes(i)} onChange={() => toggleRowSelection(i)} />
-                  </td>
                   {editableFields.map((key) => (
                     <td key={key} className="px-3 py-2">
                       <input
