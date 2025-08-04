@@ -4,7 +4,6 @@ import { DateTime } from 'luxon';
 type Config = {
   maxReservations: number;
   futureCutoff: number;
-  timeZone?: string;
   [key: string]: any;
 };
 
@@ -33,17 +32,6 @@ const headerLabels: Record<string, string> = {
 const editableFields = ['date', 'timeSlot', 'name', 'partySize', 'contactInfo', 'status', 'confirmationCode'];
 const daysOfWeek = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
-// List of selectable time zones
-const usTimeZones = [
-  'America/New_York',
-  'America/Chicago',
-  'America/Denver',
-  'America/Phoenix',
-  'America/Los_Angeles',
-  'America/Anchorage',
-  'Pacific/Honolulu',
-];
-
 // Helper: Validate time format
 function isValidTimeFormat(value: string) {
   return /^([0-1]?[0-9]|2[0-3]):[0-5][0-9](\s?(AM|PM))?$/i.test(value);
@@ -55,10 +43,9 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
   const [config, setConfig] = useState<Config>({
     maxReservations: 0,
     futureCutoff: 0,
-    timeZone: 'America/Los_Angeles',
   });
   const [reservations, setReservations] = useState<any[]>([]);
-  const [selectedDate, setSelectedDate] = useState<DateTime>(DateTime.now().setZone('America/Los_Angeles').startOf('day'));
+  const [selectedDate, setSelectedDate] = useState<DateTime>(DateTime.now().startOf('day'));
   const lastRefreshRef = useRef<number>(0);
 
   const isTokenExpired = (token: string) => {
@@ -153,7 +140,6 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
         ...(data.config || data),
         maxReservations: data.config?.maxReservations ?? data.maxReservations ?? prev.maxReservations ?? 0,
         futureCutoff: data.config?.futureCutoff ?? data.futureCutoff ?? prev.futureCutoff ?? 0,
-        timeZone: data.config?.timeZone ?? data.timeZone ?? prev.timeZone ?? 'America/Los_Angeles',
       }));
     } catch (err) { console.error('[ERROR] Fetching config failed:', err); }
   }
@@ -169,12 +155,11 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
     } catch (err) { console.error('[ERROR] Fetching reservations failed:', err); }
   }
 
-  useEffect(() => { if (jwtToken) { fetchConfig(); fetchReservations(); } }, [jwtToken, config.timeZone, selectedDate]);
+  useEffect(() => { if (jwtToken) { fetchConfig(); fetchReservations(); } }, [jwtToken, selectedDate]);
 
-  const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => { const { name, value } = e.target; setConfig((prev) => ({ ...prev, [name]: value })); };
+  const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => { const { name, value } = e.target; setConfig((prev) => ({ ...prev, [name]: value })); };
 
   const updateConfig = async () => {
-    // Validate times before sending
     for (const day of daysOfWeek) {
       const open = config[`${day}Open`];
       const close = config[`${day}Close`];
@@ -195,10 +180,7 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
     } catch (err) { console.error('[ERROR] Updating config failed:', err); }
   };
 
-  // Ensure timeZone is always valid for the dropdown
-  const validTimeZone = usTimeZones.includes(config.timeZone || '') ? config.timeZone : 'America/Los_Angeles';
-
-  const restaurantTz = validTimeZone;
+  const restaurantTz = 'America/Los_Angeles'; // Default for display
 
   if (loading) return <div className="p-8 text-center">Loading...</div>;
   if (!jwtToken) return <div className="p-8 text-center text-red-600">Authentication failed. Please log in again.</div>;
@@ -217,14 +199,6 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
             <div>
               <label className="block text-gray-700 font-medium mb-1">Future Cutoff (days)</label>
               <input name="futureCutoff" type="number" value={String(config.futureCutoff ?? '')} onChange={handleConfigChange} className="p-2 border rounded w-full" />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Timezone</label>
-              <select name="timeZone" value={validTimeZone} onChange={handleConfigChange} className="p-2 border rounded w-full">
-                {usTimeZones.map((tz) => (
-                  <option key={tz} value={tz}>{tz}</option>
-                ))}
-              </select>
             </div>
           </div>
           <div className="flex justify-end">
