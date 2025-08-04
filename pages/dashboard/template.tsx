@@ -33,6 +33,14 @@ const headerLabels: Record<string, string> = {
 const editableFields = ['date', 'timeSlot', 'name', 'partySize', 'contactInfo', 'status', 'confirmationCode'];
 const daysOfWeek = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
+// Status explanations for tooltip
+const statusInfo = {
+  confirmed: 'Reservation confirmed',
+  pending: 'Reservation not yet confirmed',
+  blocked: 'Time slot blocked/unavailable',
+  cancelled: 'Reservation cancelled',
+};
+
 export default function DashboardTemplate({ restaurantId }: DashboardProps) {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,7 +53,7 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
     const decoded = parseJwt(token);
     if (!decoded) return;
     const expiresIn = decoded.exp * 1000 - Date.now();
-    const refreshBefore = expiresIn - 5 * 60 * 1000; // refresh 5 minutes before expiration
+    const refreshBefore = expiresIn - 5 * 60 * 1000;
     if (refreshBefore > 0) {
       if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
       refreshTimeout.current = setTimeout(() => refreshToken(token), refreshBefore);
@@ -73,7 +81,6 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
     }
   };
 
-  // Verify or set token on load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get('token');
@@ -225,11 +232,26 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
           </button>
         </div>
 
+        {/* Day switcher */}
+        <div className="flex items-center justify-center space-x-4 mt-4">
+          <button onClick={() => setSelectedDate(prev => prev.minus({ days: 1 }))} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Prev</button>
+          <input type="date" value={selectedDate.toFormat('yyyy-MM-dd')} onChange={(e) => setSelectedDate(DateTime.fromISO(e.target.value, { zone: restaurantTz }))} className="p-2 border rounded" />
+          <button onClick={() => setSelectedDate(prev => prev.plus({ days: 1 }))} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Next</button>
+        </div>
+
         {/* Reservations Table */}
         <section className="bg-white rounded shadow p-6">
           <h2 className="text-xl font-semibold mb-4">
             Reservations for {selectedDate.toFormat('MMMM dd, yyyy')}
           </h2>
+          <p className="text-sm text-gray-500 mb-2">
+            <strong>Status Guide:</strong>{" "}
+            {Object.entries(statusInfo).map(([status, desc]) => (
+              <span key={status} title={desc} className="underline cursor-help mr-2">
+                {status}
+              </span>
+            ))}
+          </p>
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
