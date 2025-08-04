@@ -154,7 +154,20 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         headers: { Authorization: `Bearer ${jwtToken}` },
       });
       const data = await res.json();
-      setConfig(data);
+
+      console.log('[DEBUG] Raw config response:', data); // <-- optional debug log
+
+      // Flatten Airtable-like responses if needed
+      const flatData = data.fields ? { ...data.fields } : { ...data };
+
+      // Ensure day fields exist so inputs are controlled
+      const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+      days.forEach(day => {
+        if (!flatData[`${day}Open`]) flatData[`${day}Open`] = '';
+        if (!flatData[`${day}Close`]) flatData[`${day}Close`] = '';
+      });
+
+      setConfig(flatData);
     } catch (err) {
       console.error('[ERROR] Fetching config failed:', err);
     }
