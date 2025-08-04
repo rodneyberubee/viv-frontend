@@ -114,18 +114,23 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   }
 
   async function fetchReservations() {
-    if (!jwtToken) return;
-    try {
-      const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/reservations`, {
-        headers: { Authorization: `Bearer ${jwtToken}` },
-      });
-      const data = await res.json();
-      const reservationsFromServer = (data.reservations || data || []).map((r: any) => ({ ...r, hidden: false }));
-      setReservations(reservationsFromServer);
-    } catch (err) {
-      console.error('[ERROR] Fetching reservations failed:', err);
-    }
+  if (!jwtToken) return;
+  try {
+    const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/reservations`, {
+      headers: { Authorization: `Bearer ${jwtToken}` },
+    });
+    const data = await res.json();
+    // Preserve actual hidden field value from Airtable (boolean or string)
+    const reservationsFromServer = (data.reservations || data || []).map((r: any) => ({
+      ...r,
+      hidden: r.hidden === true || r.hidden === 'true',
+    }));
+    setReservations(reservationsFromServer);
+  } catch (err) {
+    console.error('[ERROR] Fetching reservations failed:', err);
   }
+}
+
 
   useEffect(() => {
     if (jwtToken) {
