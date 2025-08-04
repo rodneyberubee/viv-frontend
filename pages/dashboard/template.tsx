@@ -95,7 +95,8 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         headers: { Authorization: `Bearer ${jwtToken}` },
       });
       const data = await res.json();
-      setConfig(data);
+      console.log('[DEBUG] /config response:', data);
+      setConfig(data.config || data); // Handle wrapped or flat
     } catch (err) {
       console.error('[ERROR] Fetching config failed:', err);
     }
@@ -108,7 +109,8 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         headers: { Authorization: `Bearer ${jwtToken}` },
       });
       const data = await res.json();
-      const reservationsFromServer = data.reservations || [];
+      console.log('[DEBUG] /reservations response:', data);
+      const reservationsFromServer = data.reservations || data || [];
 
       const blankRowTemplate = editableFields.reduce((acc, key) => {
         acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
