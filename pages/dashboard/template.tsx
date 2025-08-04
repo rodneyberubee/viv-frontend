@@ -178,34 +178,6 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   }
 };
 
-  const toggleRowSelection = (index: number) => {
-    setSelectedRows((prev) => (prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]));
-  };
-
-   // [UPDATED] Mark selected rows as hidden in Airtable and refresh
-const deleteSelectedRows = async () => {
-  if (!jwtToken) return;
-  try {
-    const payload = selectedRows.map((index) => ({
-      recordId: reservations[index].id,
-      updatedFields: { restaurantId }, // store as "1" instead of boolean
-    }));
-
-    await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
-      body: JSON.stringify(payload),
-    });
-
-    setSelectedRows([]);
-    fetchReservations(); // refresh to remove from list
-  } catch (err) {
-    console.error('[ERROR] Deleting rows failed:', err);
-  }
-};
-
-
-
   const updateConfig = async () => {
     if (!jwtToken) return;
     const numericFields = ['maxReservations', 'futureCutoff'];
@@ -228,13 +200,12 @@ const deleteSelectedRows = async () => {
     }
   };
 
-    // [UPDATED] Include hidden records in updates
 const updateReservations = async () => {
   if (!jwtToken) return;
   try {
     const payload = reservations
       .filter((res) => Object.keys(res).length > 0)
-      .map(({ id, rawConfirmationCode, dateFormatted, hidden, ...fields }) => ({
+      .map(({ id, rawConfirmationCode, dateFormatted, ...fields }) => ({
         recordId: id,
         updatedFields: { 
           ...fields,
