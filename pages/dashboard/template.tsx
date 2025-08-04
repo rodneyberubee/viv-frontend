@@ -454,5 +454,10 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
               Update Config
             </button>
           </div>
-       export default DashboardTemplate;
+        </section>
+      </main>
+    </div>
+  );
+};
 
+export default DashboardTemplate;
