@@ -4,7 +4,6 @@ import { DateTime } from 'luxon';
 type Config = {
   maxReservations: number;
   futureCutoff: number;
-  timeZone?: string;
   [key: string]: any;
 };
 
@@ -30,11 +29,10 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   const [config, setConfig] = useState<Config>({
     maxReservations: 0,
     futureCutoff: 0,
-    timeZone: 'America/Los_Angeles',
   });
   const [reservations, setReservations] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<DateTime>(
-    DateTime.now().setZone('America/Los_Angeles').startOf('day')
+    DateTime.now().startOf('day')
   );
 
   // Handle token exchange -> JWT
@@ -95,7 +93,6 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         headers: { Authorization: `Bearer ${jwtToken}` },
       });
       const data = await res.json();
-      console.log('[DEBUG] /config response:', data);
       setConfig(data.config || data); // Handle wrapped or flat
     } catch (err) {
       console.error('[ERROR] Fetching config failed:', err);
@@ -109,7 +106,6 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         headers: { Authorization: `Bearer ${jwtToken}` },
       });
       const data = await res.json();
-      console.log('[DEBUG] /reservations response:', data);
       const reservationsFromServer = data.reservations || data || [];
 
       const blankRowTemplate = editableFields.reduce((acc, key) => {
@@ -128,7 +124,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
       fetchConfig();
       fetchReservations();
     }
-  }, [jwtToken, config.timeZone, selectedDate]);
+  }, [jwtToken, selectedDate]);
 
   useEffect(() => {
     const bc = new BroadcastChannel('reservations');
@@ -200,26 +196,18 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     }
   };
 
-  const reservationHidden = ['id', 'rawConfirmationCode', 'dateFormatted', 'notes', 'restaurantId'];
-  const restaurantTz = config.timeZone || 'America/Los_Angeles';
-  const format24hr = (time: string) => {
-    if (!time) return '';
-    const dt = DateTime.fromISO(`2000-01-01T${time}`, { zone: restaurantTz });
-    return dt.isValid ? dt.toFormat('HH:mm') : '';
-  };
-
   const filteredReservations = reservations
     .filter(r => {
-      const dt = DateTime.fromISO(r.date, { zone: restaurantTz });
+      const dt = DateTime.fromISO(r.date);
       return dt.isValid && dt.hasSame(selectedDate, 'day') && ((r.name && r.timeSlot) || r.status === 'blocked');
     })
     .sort((a, b) => {
-      const t1 = DateTime.fromISO(`${a.date}T${a.timeSlot || '00:00'}`, { zone: restaurantTz });
-      const t2 = DateTime.fromISO(`${b.date}T${b.timeSlot || '00:00'}`, { zone: restaurantTz });
+      const t1 = DateTime.fromISO(`${a.date}T${a.timeSlot || '00:00'}`);
+      const t2 = DateTime.fromISO(`${b.date}T${b.timeSlot || '00:00'}`);
       return t1.toMillis() - t2.toMillis();
     });
 
-  const today = DateTime.now().setZone(restaurantTz).startOf('day');
+  const today = DateTime.now().startOf('day');
   const weekStart = today.startOf('week');
   const weekEnd = today.endOf('week');
   const monthStart = today.startOf('month');
@@ -227,24 +215,24 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   const validForMetrics = reservations.filter(
     r =>
       r.status?.toLowerCase() === 'confirmed' &&
-      DateTime.fromISO(r.date, { zone: restaurantTz }).isValid
+      DateTime.fromISO(r.date).isValid
   );
   const todayCount = validForMetrics.filter(r =>
-    DateTime.fromISO(r.date, { zone: restaurantTz }).hasSame(today, 'day')
+    DateTime.fromISO(r.date).hasSame(today, 'day')
   ).length;
   const weekCount = validForMetrics.filter(r => {
-    const d = DateTime.fromISO(r.date, { zone: restaurantTz });
+    const d = DateTime.fromISO(r.date);
     return d >= weekStart && d <= weekEnd;
   }).length;
   const monthCount = validForMetrics.filter(r => {
-    const d = DateTime.fromISO(r.date, { zone: restaurantTz });
+    const d = DateTime.fromISO(r.date);
     return d >= monthStart && d <= monthEnd;
   }).length;
 
   const goToPrevDay = () => setSelectedDate(prev => prev.minus({ days: 1 }));
   const goToNextDay = () => setSelectedDate(prev => prev.plus({ days: 1 }));
   const onDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedDate(DateTime.fromISO(e.target.value, { zone: restaurantTz }));
+    setSelectedDate(DateTime.fromISO(e.target.value));
   };
 
   if (loading) {
@@ -308,9 +296,10 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
                   {editableFields.map((key) => (
                     <td key={key} className="px-3 py-2">
                       <input
-                        type={key === 'timeSlot' ? 'time' : key === 'date' ? 'date' : 'text'}
+                        type={key === 'timeSlot' ? 'text' : key === 'date' ? 'date' : 'text'}
+                        placeholder={key === 'timeSlot' ? 'HH:mm or HH:mm AM/PM' : ''}
                         name={key}
-                        value={key === 'timeSlot' ? format24hr(String(res[key])) : String(res[key] ?? '')}
+                        value={String(res[key] ?? '')}
                         onChange={(e) => handleReservationEdit(e, res.id, i)}
                         className="w-full p-1 rounded border border-transparent focus:border-orange-500 focus:ring focus:ring-orange-200"
                       />
@@ -356,17 +345,6 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
                 className="p-2 border rounded w-full"
               />
             </div>
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Timezone</label>
-              <input
-                name="timeZone"
-                type="text"
-                value={config.timeZone || ''}
-                onChange={handleConfigChange}
-                placeholder="e.g., America/Los_Angeles"
-                className="p-2 border rounded w-full"
-              />
-            </div>
           </div>
           <div className="mt-4 overflow-auto">
             <table className="w-full text-sm border">
@@ -382,7 +360,8 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
                   {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
                     <td key={day + 'Open'} className="border px-1 py-1">
                       <input
-                        type="time"
+                        type="text"
+                        placeholder="HH:mm or HH:mm AM/PM"
                         name={`${day}Open`}
                         value={config[`${day}Open`] || ''}
                         onChange={handleConfigChange}
@@ -395,7 +374,8 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
                   {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
                     <td key={day + 'Close'} className="border px-1 py-1">
                       <input
-                        type="time"
+                        type="text"
+                        placeholder="HH:mm or HH:mm AM/PM"
                         name={`${day}Close`}
                         value={config[`${day}Close`] || ''}
                         onChange={handleConfigChange}
