@@ -35,6 +35,16 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     DateTime.now().startOf('day')
   );
 
+  const aiLink = `https://vivaitable.com/${restaurantId}`;
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(aiLink);
+      alert('Link copied to clipboard!');
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
   // Handle token exchange -> JWT
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -243,11 +253,24 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     <div className="flex min-h-screen bg-gray-100">
       <aside className="w-64 bg-white shadow-md p-6 space-y-6">
         <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-        <nav className="space-y-4">
-          <a className="block font-medium text-orange-500">Reservations</a>
-          <a className="block text-gray-600 hover:text-orange-500">Availability</a>
-          <a className="block text-gray-600 hover:text-orange-500">Settings</a>
-        </nav>
+        <div>
+          <p className="text-sm text-gray-600 mb-2">Your Viv AI Link</p>
+          <div className="flex space-x-2">
+            <input
+              type="text"
+              value={aiLink}
+              readOnly
+              className="w-full p-2 border rounded bg-gray-100 text-sm"
+            />
+            <button
+              onClick={copyToClipboard}
+              className="bg-orange-500 text-white px-3 py-2 rounded hover:bg-orange-600"
+            >
+              Copy
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">Share this link for direct AI reservations.</p>
+        </div>
       </aside>
 
       <main className="flex-1 p-8 space-y-8">
