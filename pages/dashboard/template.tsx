@@ -123,7 +123,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     // Preserve actual hidden field value from Airtable (boolean or string)
     const reservationsFromServer = (data.reservations || data || []).map((r: any) => ({
       ...r,
-      hidden: r.hidden === true || r.hidden === 'true',
+      hidden: r.hidden ?? false, // only default to false if null/undefined
     }));
     setReservations(reservationsFromServer);
   } catch (err) {
