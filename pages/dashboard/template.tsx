@@ -36,9 +36,8 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     futureCutoff: 0,
   });
   const [reservations, setReservations] = useState<any[]>([]);
-  const [selectedDate, setSelectedDate] = useState<DateTime>(
-    DateTime.now().startOf('day')
-  );
+  const [selectedDate, setSelectedDate] = useState<DateTime>(DateTime.now().startOf('day'));
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
 
   const aiLink = `https://vivaitable.com/${restaurantId}`;
   const copyToClipboard = async () => {
@@ -67,7 +66,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         if (data.token) {
           localStorage.setItem('jwtToken', data.token);
           setJwtToken(data.token);
-          window.history.replaceState({}, '', window.location.pathname); // clean URL
+          window.history.replaceState({}, '', window.location.pathname);
         } else {
           throw new Error('Invalid login token');
         }
@@ -81,16 +80,16 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     }
 
     if (urlToken) {
-      exchangeForJwt(urlToken); // First-time login from email token
+      exchangeForJwt(urlToken);
     } else if (storedJwt) {
-      setJwtToken(storedJwt); // Use existing JWT
+      setJwtToken(storedJwt);
       setLoading(false);
     } else {
-      window.location.href = '/login'; // No token at all
+      window.location.href = '/login';
     }
   }, []);
 
-  // Auto-logout if token is invalid on any fetch
+  // Auto-logout if token is invalid
   async function safeFetch(url: string, options: any) {
     const res = await fetch(url, options);
     if (res.status === 401) {
@@ -108,7 +107,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         headers: { Authorization: `Bearer ${jwtToken}` },
       });
       const data = await res.json();
-      setConfig(data.config || data); // Handle wrapped or flat
+      setConfig(data.config || data);
     } catch (err) {
       console.error('[ERROR] Fetching config failed:', err);
     }
@@ -121,14 +120,8 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         headers: { Authorization: `Bearer ${jwtToken}` },
       });
       const data = await res.json();
-      const reservationsFromServer = data.reservations || data || [];
-
-      const blankRowTemplate = editableFields.reduce((acc, key) => {
-        acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
-        return acc;
-      }, { restaurantId } as any);
-
-      setReservations([...reservationsFromServer, blankRowTemplate]);
+      const reservationsFromServer = (data.reservations || data || []).map((r: any) => ({ ...r, hidden: false }));
+      setReservations(reservationsFromServer);
     } catch (err) {
       console.error('[ERROR] Fetching reservations failed:', err);
     }
@@ -159,10 +152,25 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   const handleReservationEdit = (e: React.ChangeEvent<HTMLInputElement>, id: string | undefined, index: number) => {
     const { name, value } = e.target;
     setReservations((prev) =>
-      prev.map((res, i) =>
-        res.id === id || (!res.id && i === index) ? { ...res, [name]: value } : res
-      )
+      prev.map((res, i) => (res.id === id || (!res.id && i === index) ? { ...res, [name]: value } : res))
     );
+  };
+
+  const addNewRow = () => {
+    const newRow = editableFields.reduce((acc, key) => {
+      acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
+      return acc;
+    }, { restaurantId, hidden: false } as any);
+    setReservations((prev) => [...prev, newRow]);
+  };
+
+  const toggleRowSelection = (index: number) => {
+    setSelectedRows((prev) => (prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]));
+  };
+
+  const deleteSelectedRows = () => {
+    setReservations((prev) => prev.map((res, i) => (selectedRows.includes(i) ? { ...res, hidden: true } : res)));
+    setSelectedRows([]);
   };
 
   const updateConfig = async () => {
@@ -172,10 +180,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     const cleaned = Object.fromEntries(
       Object.entries(config)
         .filter(([key]) => !excluded.includes(key))
-        .map(([key, val]) => [
-          key,
-          numericFields.includes(key) ? parseInt(String(val), 10) || 0 : val
-        ])
+        .map(([key, val]) => [key, numericFields.includes(key) ? parseInt(String(val), 10) || 0 : val])
     );
 
     try {
@@ -194,10 +199,10 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     if (!jwtToken) return;
     try {
       const payload = reservations
-        .filter((res) => Object.keys(res).length > 0 && res.confirmationCode)
+        .filter((res) => !res.hidden && Object.keys(res).length > 0 && res.confirmationCode)
         .map(({ id, rawConfirmationCode, dateFormatted, ...fields }) => ({
           recordId: id,
-          updatedFields: { ...fields, restaurantId }
+          updatedFields: { ...fields, restaurantId },
         }));
 
       await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
@@ -212,7 +217,8 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   };
 
   const filteredReservations = reservations
-    .filter(r => {
+    .filter((r) => !r.hidden)
+    .filter((r) => {
       const dt = DateTime.fromISO(r.date);
       return dt.isValid && dt.hasSame(selectedDate, 'day') && ((r.name && r.timeSlot) || r.status === 'blocked');
     })
@@ -227,25 +233,19 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   const weekEnd = today.endOf('week');
   const monthStart = today.startOf('month');
   const monthEnd = today.endOf('month');
-  const validForMetrics = reservations.filter(
-    r =>
-      r.status?.toLowerCase() === 'confirmed' &&
-      DateTime.fromISO(r.date).isValid
-  );
-  const todayCount = validForMetrics.filter(r =>
-    DateTime.fromISO(r.date).hasSame(today, 'day')
-  ).length;
-  const weekCount = validForMetrics.filter(r => {
+  const validForMetrics = reservations.filter((r) => r.status?.toLowerCase() === 'confirmed' && DateTime.fromISO(r.date).isValid);
+  const todayCount = validForMetrics.filter((r) => DateTime.fromISO(r.date).hasSame(today, 'day')).length;
+  const weekCount = validForMetrics.filter((r) => {
     const d = DateTime.fromISO(r.date);
     return d >= weekStart && d <= weekEnd;
   }).length;
-  const monthCount = validForMetrics.filter(r => {
+  const monthCount = validForMetrics.filter((r) => {
     const d = DateTime.fromISO(r.date);
     return d >= monthStart && d <= monthEnd;
   }).length;
 
-  const goToPrevDay = () => setSelectedDate(prev => prev.minus({ days: 1 }));
-  const goToNextDay = () => setSelectedDate(prev => prev.plus({ days: 1 }));
+  const goToPrevDay = () => setSelectedDate((prev) => prev.minus({ days: 1 }));
+  const goToNextDay = () => setSelectedDate((prev) => prev.plus({ days: 1 }));
   const onDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedDate(DateTime.fromISO(e.target.value));
   };
@@ -261,16 +261,8 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         <div>
           <p className="text-sm text-gray-600 mb-2">Your Viv AI Link</p>
           <div className="flex space-x-2">
-            <input
-              type="text"
-              value={aiLink}
-              readOnly
-              className="w-full p-2 border rounded bg-gray-100 text-sm"
-            />
-            <button
-              onClick={copyToClipboard}
-              className="bg-orange-500 text-white px-3 py-2 rounded hover:bg-orange-600"
-            >
+            <input type="text" value={aiLink} readOnly className="w-full p-2 border rounded bg-gray-100 text-sm" />
+            <button onClick={copyToClipboard} className="bg-orange-500 text-white px-3 py-2 rounded hover:bg-orange-600">
               Copy
             </button>
           </div>
@@ -281,12 +273,19 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
       <main className="flex-1 p-8 space-y-8">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Reservations</h1>
-          <button
-            onClick={updateReservations}
-            className="bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600"
-          >
-            Update Reservations
-          </button>
+          <div className="flex space-x-2">
+            {selectedRows.length > 0 && (
+              <button onClick={deleteSelectedRows} className="bg-red-500 text-white px-3 py-2 rounded shadow hover:bg-red-600">
+                Delete Selected
+              </button>
+            )}
+            <button onClick={addNewRow} className="bg-gray-200 px-3 py-2 rounded shadow hover:bg-gray-300">
+              Add New Row
+            </button>
+            <button onClick={updateReservations} className="bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600">
+              Update Reservations
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-4">
@@ -305,16 +304,27 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         </div>
 
         <section className="bg-white rounded shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">
-            Reservations for {selectedDate.toFormat('MMMM dd, yyyy')}
-          </h2>
+          <h2 className="text-xl font-semibold mb-4">Reservations for {selectedDate.toFormat('MMMM dd, yyyy')}</h2>
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                {editableFields.map((key) => (
+                <th className="px-3 py-2">
+                  <input
+                    type="checkbox"
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedRows(filteredReservations.map((_, idx) => idx));
+                      } else {
+                        setSelectedRows([]);
+                      }
+                    }}
+                    checked={selectedRows.length === filteredReservations.length && filteredReservations.length > 0}
+                  />
+                </th>
+                {editableFields.map((key) =>
                   key === 'status' ? (
                     <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium relative group">
-                      {headerLabels[key]} 
+                      {headerLabels[key]}
                       <span className="ml-1 text-gray-400 cursor-help">?</span>
                       <div className="absolute left-0 mt-1 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10">
                         {statusTooltip}
@@ -325,12 +335,15 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
                       {headerLabels[key] || key}
                     </th>
                   )
-                ))}
+                )}
               </tr>
             </thead>
             <tbody>
               {filteredReservations.map((res, i) => (
                 <tr key={res.id || i} className="border-t hover:bg-gray-50">
+                  <td className="px-3 py-2">
+                    <input type="checkbox" checked={selectedRows.includes(i)} onChange={() => toggleRowSelection(i)} />
+                  </td>
                   {editableFields.map((key) => (
                     <td key={key} className="px-3 py-2">
                       <input
@@ -349,14 +362,13 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
           </table>
 
           <div className="flex items-center justify-center space-x-4 mt-4">
-            <button onClick={goToPrevDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Prev</button>
-            <input
-              type="date"
-              value={selectedDate.toFormat('yyyy-MM-dd')}
-              onChange={onDateChange}
-              className="p-2 border rounded"
-            />
-            <button onClick={goToNextDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Next</button>
+            <button onClick={goToPrevDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
+              Prev
+            </button>
+            <input type="date" value={selectedDate.toFormat('yyyy-MM-dd')} onChange={onDateChange} className="p-2 border rounded" />
+            <button onClick={goToNextDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
+              Next
+            </button>
           </div>
         </section>
 
@@ -388,14 +400,16 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
-                    <th key={day} className="px-3 py-2 text-left text-gray-700 font-medium capitalize">{day}</th>
+                  {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
+                    <th key={day} className="px-3 py-2 text-left text-gray-700 font-medium capitalize">
+                      {day}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 <tr className="hover:bg-gray-50">
-                  {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
+                  {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
                     <td key={day + 'Open'} className="px-3 py-2 border-t">
                       <input
                         type="text"
@@ -409,7 +423,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
                   ))}
                 </tr>
                 <tr className="hover:bg-gray-50">
-                  {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
+                  {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
                     <td key={day + 'Close'} className="px-3 py-2 border-t">
                       <input
                         type="text"
@@ -426,10 +440,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
             </table>
           </div>
           <div className="flex justify-end">
-            <button
-              onClick={updateConfig}
-              className="mt-4 bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600"
-            >
+            <button onClick={updateConfig} className="mt-4 bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600">
               Update Config
             </button>
           </div>
