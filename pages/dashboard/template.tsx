@@ -250,11 +250,12 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     }
   };
 
-  const filteredReservations = reservations
+    const filteredReservations = reservations
     .filter((r) => !r.hidden)
     .filter((r) => {
       const dt = DateTime.fromISO(r.date);
-      return dt.isValid && dt.hasSame(selectedDate, 'day') && ((r.name && r.timeSlot) || r.status === 'blocked');
+      // Show all reservations for the selected day, even if blank or pending
+      return dt.isValid && dt.hasSame(selectedDate, 'day');
     })
     .sort((a, b) => {
       const t1 = DateTime.fromISO(`${a.date}T${a.timeSlot || '00:00'}`);
