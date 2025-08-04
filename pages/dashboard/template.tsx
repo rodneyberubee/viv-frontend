@@ -365,3 +365,6 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
           </div>
         </section>
       </main>
+    </div>
+  );
+}
