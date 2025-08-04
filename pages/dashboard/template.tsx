@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { DateTime } from 'luxon';
 
 type Config = {
@@ -22,48 +22,109 @@ const headerLabels: Record<string, string> = {
 
 const editableFields = ['date', 'timeSlot', 'name', 'partySize', 'contactInfo', 'status', 'confirmationCode'];
 
+// Parse JWT to get expiration
+const parseJwt = (token: string): { exp: number } | null => {
+  try {
+    const base64 = token.split('.')[1];
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+};
+
 const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState<Config>({ maxReservations: 0, futureCutoff: 0, timeZone: 'America/Los_Angeles' });
   const [reservations, setReservations] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<DateTime>(DateTime.now().setZone('America/Los_Angeles').startOf('day'));
+  const refreshTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  // Refresh token
+  const refreshToken = async (token: string) => {
+    try {
+      const res = await fetch('https://api.vivaitable.com/api/auth/refresh', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem('jwtToken', data.token);
+        setJwtToken(data.token);
+        scheduleTokenRefresh(data.token);
+        return data.token;
+      } else {
+        localStorage.removeItem('jwtToken');
+        window.location.href = '/login';
+      }
+    } catch {
+      localStorage.removeItem('jwtToken');
+      window.location.href = '/login';
+    }
+    return null;
+  };
+
+  // Schedule refresh 5 mins before expiration
+  const scheduleTokenRefresh = (token: string) => {
+    const decoded = parseJwt(token);
+    if (!decoded) return;
+    const expiresIn = decoded.exp * 1000 - Date.now();
+    const refreshBefore = expiresIn - 5 * 60 * 1000;
+    if (refreshBefore > 0) {
+      if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
+      refreshTimeout.current = setTimeout(() => refreshToken(token), refreshBefore);
+    }
+  };
+
+  // Verify token & refresh if needed
+  async function verifyToken(token: string) {
+    const decoded = parseJwt(token);
+    if (!decoded || Date.now() >= decoded.exp * 1000) {
+      token = await refreshToken(token) || '';
+      if (!token) return;
+    }
+
+    try {
+      const res = await fetch('https://api.vivaitable.com/api/auth/login/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem('jwtToken', data.token);
+        setJwtToken(data.token);
+        scheduleTokenRefresh(data.token);
+        window.history.replaceState({}, '', window.location.pathname);
+      } else {
+        localStorage.removeItem('jwtToken');
+        window.location.href = '/login';
+      }
+    } catch (err) {
+      console.error('[ERROR] Verifying token failed:', err);
+      localStorage.removeItem('jwtToken');
+      window.location.href = '/login';
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Init token on load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get('token');
     const storedJwt = localStorage.getItem('jwtToken');
 
-    async function verifyToken(token: string) {
-      try {
-        const res = await fetch('https://api.vivaitable.com/api/auth/login/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
-        });
-        const data = await res.json();
-        if (data.token) {
-          localStorage.setItem('jwtToken', data.token);
-          setJwtToken(data.token);
-          window.history.replaceState({}, '', window.location.pathname);
-        } else {
-          localStorage.removeItem('jwtToken');
-          window.location.href = '/login';
-        }
-      } catch (err) {
-        console.error('[ERROR] Verifying token failed:', err);
-        localStorage.removeItem('jwtToken');
-        window.location.href = '/login';
-      } finally {
-        setLoading(false);
-      }
-    }
-
     if (urlToken) verifyToken(urlToken);
     else if (storedJwt) verifyToken(storedJwt);
     else window.location.href = '/login';
+
+    return () => {
+      if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
+    };
   }, []);
 
+  // API helpers
   async function safeFetch(url: string, options: any) {
     const res = await fetch(url, options);
     if (res.status === 401) {
