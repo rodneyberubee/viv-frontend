@@ -148,7 +148,13 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
     try {
       const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/config`, { headers: { Authorization: `Bearer ${jwtToken}` } });
       const data = await res.json();
-      setConfig(data.config || data);
+      setConfig(prev => ({
+        ...prev,
+        ...(data.config || data),
+        maxReservations: data.config?.maxReservations ?? data.maxReservations ?? prev.maxReservations ?? 0,
+        futureCutoff: data.config?.futureCutoff ?? data.futureCutoff ?? prev.futureCutoff ?? 0,
+        timeZone: data.config?.timeZone ?? data.timeZone ?? prev.timeZone ?? 'America/Los_Angeles',
+      }));
     } catch (err) { console.error('[ERROR] Fetching config failed:', err); }
   }
 
@@ -211,7 +217,7 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
             </div>
             <div>
               <label className="block text-gray-700 font-medium mb-1">Timezone</label>
-              <select name="timeZone" value={config.timeZone || ''} onChange={handleConfigChange} className="p-2 border rounded w-full">
+              <select name="timeZone" value={config.timeZone || 'America/Los_Angeles'} onChange={handleConfigChange} className="p-2 border rounded w-full">
                 {usTimeZones.map((tz) => (
                   <option key={tz} value={tz}>{tz}</option>
                 ))}
