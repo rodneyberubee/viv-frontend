@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { DateTime } from 'luxon';
 
 type Config = {
@@ -9,6 +9,16 @@ type Config = {
 };
 
 type DashboardProps = { restaurantId: string };
+type JWTPayload = { exp: number; restaurantId: string; email: string };
+
+const parseJwt = (token: string): JWTPayload | null => {
+  try {
+    const base64 = token.split('.')[1];
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+};
 
 const headerLabels: Record<string, string> = {
   date: 'Date',
@@ -23,14 +33,47 @@ const headerLabels: Record<string, string> = {
 const editableFields = ['date', 'timeSlot', 'name', 'partySize', 'contactInfo', 'status', 'confirmationCode'];
 const daysOfWeek = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
-const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
+export default function DashboardTemplate({ restaurantId }: DashboardProps) {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState<Config>({ maxReservations: 0, futureCutoff: 0, timeZone: 'America/Los_Angeles' });
   const [reservations, setReservations] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<DateTime>(DateTime.now().setZone('America/Los_Angeles').startOf('day'));
+  const refreshTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // Token management
+  const scheduleTokenRefresh = (token: string) => {
+    const decoded = parseJwt(token);
+    if (!decoded) return;
+    const expiresIn = decoded.exp * 1000 - Date.now();
+    const refreshBefore = expiresIn - 5 * 60 * 1000; // refresh 5 minutes before expiration
+    if (refreshBefore > 0) {
+      if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
+      refreshTimeout.current = setTimeout(() => refreshToken(token), refreshBefore);
+    }
+  };
+
+  const refreshToken = async (token: string) => {
+    try {
+      const res = await fetch('https://api.vivaitable.com/api/auth/refresh', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem('jwtToken', data.token);
+        setJwtToken(data.token);
+        scheduleTokenRefresh(data.token);
+      } else {
+        localStorage.removeItem('jwtToken');
+        window.location.href = '/login';
+      }
+    } catch {
+      localStorage.removeItem('jwtToken');
+      window.location.href = '/login';
+    }
+  };
+
+  // Verify or set token on load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get('token');
@@ -47,6 +90,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         if (data.token) {
           localStorage.setItem('jwtToken', data.token);
           setJwtToken(data.token);
+          scheduleTokenRefresh(data.token);
           window.history.replaceState({}, '', window.location.pathname);
         } else {
           localStorage.removeItem('jwtToken');
@@ -63,6 +107,10 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     if (urlToken) verifyToken(urlToken);
     else if (storedJwt) verifyToken(storedJwt);
     else window.location.href = '/login';
+
+    return () => {
+      if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
+    };
   }, []);
 
   async function safeFetch(url: string, options: any) {
@@ -158,6 +206,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
+      {/* Sidebar */}
       <aside className="w-64 bg-white shadow-md p-6 space-y-6">
         <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
         <nav className="space-y-4">
@@ -167,6 +216,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         </nav>
       </aside>
 
+      {/* Main */}
       <main className="flex-1 p-8 space-y-8">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Reservations</h1>
@@ -253,6 +303,4 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
       </main>
     </div>
   );
-};
-
-export default DashboardTemplate;
+}
