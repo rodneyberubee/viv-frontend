@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { DateTime } from 'luxon';
 
 type Config = {
@@ -9,16 +9,6 @@ type Config = {
 };
 
 type DashboardProps = { restaurantId: string };
-type JWTPayload = { exp: number; restaurantId: string; email: string };
-
-const parseJwt = (token: string): JWTPayload | null => {
-  try {
-    const base64 = token.split('.')[1];
-    return JSON.parse(atob(base64));
-  } catch {
-    return null;
-  }
-};
 
 const headerLabels: Record<string, string> = {
   date: 'Date',
@@ -31,54 +21,13 @@ const headerLabels: Record<string, string> = {
 };
 
 const editableFields = ['date', 'timeSlot', 'name', 'partySize', 'contactInfo', 'status', 'confirmationCode'];
-const daysOfWeek = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
-// Tooltip content for Status
-const statusInfo = `
-• Confirmed: Reservation is confirmed.
-• Canceled: Reservation was canceled.
-• Blocked: Slot is blocked/unavailable.
-`;
-
-export default function DashboardTemplate({ restaurantId }: DashboardProps) {
+const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState<Config>({ maxReservations: 0, futureCutoff: 0, timeZone: 'America/Los_Angeles' });
   const [reservations, setReservations] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<DateTime>(DateTime.now().setZone('America/Los_Angeles').startOf('day'));
-  const refreshTimeout = useRef<NodeJS.Timeout | null>(null);
-
-  const scheduleTokenRefresh = (token: string) => {
-    const decoded = parseJwt(token);
-    if (!decoded) return;
-    const expiresIn = decoded.exp * 1000 - Date.now();
-    const refreshBefore = expiresIn - 5 * 60 * 1000;
-    if (refreshBefore > 0) {
-      if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
-      refreshTimeout.current = setTimeout(() => refreshToken(token), refreshBefore);
-    }
-  };
-
-  const refreshToken = async (token: string) => {
-    try {
-      const res = await fetch('https://api.vivaitable.com/api/auth/refresh', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (data.token) {
-        localStorage.setItem('jwtToken', data.token);
-        setJwtToken(data.token);
-        scheduleTokenRefresh(data.token);
-      } else {
-        localStorage.removeItem('jwtToken');
-        window.location.href = '/login';
-      }
-    } catch {
-      localStorage.removeItem('jwtToken');
-      window.location.href = '/login';
-    }
-  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -96,13 +45,13 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
         if (data.token) {
           localStorage.setItem('jwtToken', data.token);
           setJwtToken(data.token);
-          scheduleTokenRefresh(data.token);
           window.history.replaceState({}, '', window.location.pathname);
         } else {
           localStorage.removeItem('jwtToken');
           window.location.href = '/login';
         }
-      } catch {
+      } catch (err) {
+        console.error('[ERROR] Verifying token failed:', err);
         localStorage.removeItem('jwtToken');
         window.location.href = '/login';
       } finally {
@@ -113,10 +62,6 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
     if (urlToken) verifyToken(urlToken);
     else if (storedJwt) verifyToken(storedJwt);
     else window.location.href = '/login';
-
-    return () => {
-      if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
-    };
   }, []);
 
   async function safeFetch(url: string, options: any) {
@@ -134,12 +79,7 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
     try {
       const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/config`, { headers: { Authorization: `Bearer ${jwtToken}` } });
       const data = await res.json();
-      setConfig((prev) => ({
-        ...prev,
-        ...(data.config || data),
-        maxReservations: data.config?.maxReservations ?? data.maxReservations ?? prev.maxReservations ?? 0,
-        futureCutoff: data.config?.futureCutoff ?? data.futureCutoff ?? prev.futureCutoff ?? 0,
-      }));
+      setConfig(data);
     } catch (err) {
       console.error('[ERROR] Fetching config failed:', err);
     }
@@ -151,14 +91,17 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
       const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/reservations`, { headers: { Authorization: `Bearer ${jwtToken}` } });
       const data = await res.json();
       const reservationsFromServer = data.reservations || [];
-      const blankRowTemplate = editableFields.reduce((acc, key) => { acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : ''; return acc; }, { restaurantId } as any);
+      const blankRowTemplate = editableFields.reduce((acc, key) => {
+        acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
+        return acc;
+      }, { restaurantId } as any);
       setReservations([...reservationsFromServer, blankRowTemplate]);
     } catch (err) {
       console.error('[ERROR] Fetching reservations failed:', err);
     }
   }
 
-  useEffect(() => { if (jwtToken) { fetchConfig(); fetchReservations(); } }, [jwtToken, selectedDate]);
+  useEffect(() => { if (jwtToken) { fetchConfig(); fetchReservations(); } }, [jwtToken, config.timeZone, selectedDate]);
 
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -212,7 +155,6 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
       <aside className="w-64 bg-white shadow-md p-6 space-y-6">
         <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
         <nav className="space-y-4">
@@ -222,45 +164,21 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
         </nav>
       </aside>
 
-      {/* Main */}
       <main className="flex-1 p-8 space-y-8">
-        {/* Top Section with Date Switcher */}
         <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Reservations</h1>
-            <div className="flex items-center space-x-2 mt-2">
-              <button onClick={() => setSelectedDate(prev => prev.minus({ days: 1 }))} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Prev</button>
-              <input type="date" value={selectedDate.toFormat('yyyy-MM-dd')} onChange={(e) => setSelectedDate(DateTime.fromISO(e.target.value, { zone: restaurantTz }))} className="p-2 border rounded" />
-              <button onClick={() => setSelectedDate(prev => prev.plus({ days: 1 }))} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Next</button>
-            </div>
-          </div>
+          <h1 className="text-3xl font-bold">Reservations</h1>
           <button onClick={updateReservations} className="bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600">
             Update Reservations
           </button>
         </div>
 
-        {/* Reservations Table */}
         <section className="bg-white rounded shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">
-            Reservations for {selectedDate.toFormat('MMMM dd, yyyy')}
-          </h2>
+          <h2 className="text-xl font-semibold mb-4">Reservations for {selectedDate.toFormat('MMMM dd, yyyy')}</h2>
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
                 {editableFields.map((key) => (
-                  <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
-                    {headerLabels[key] || key}
-                    {key === 'status' && (
-                      <span
-                        className="ml-2 text-gray-400 cursor-pointer relative group"
-                      >
-                        ?
-                        <div className="absolute left-0 bottom-full mb-2 w-48 p-2 bg-white border rounded shadow-lg text-xs text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {statusInfo}
-                        </div>
-                      </span>
-                    )}
-                  </th>
+                  <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">{headerLabels[key] || key}</th>
                 ))}
               </tr>
             </thead>
@@ -276,9 +194,15 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
               ))}
             </tbody>
           </table>
+
+          {/* Date Switcher Below the Table */}
+          <div className="flex items-center justify-center space-x-4 mt-4">
+            <button onClick={() => setSelectedDate(prev => prev.minus({ days: 1 }))} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Prev</button>
+            <input type="date" value={selectedDate.toFormat('yyyy-MM-dd')} onChange={(e) => setSelectedDate(DateTime.fromISO(e.target.value, { zone: restaurantTz }))} className="p-2 border rounded" />
+            <button onClick={() => setSelectedDate(prev => prev.plus({ days: 1 }))} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Next</button>
+          </div>
         </section>
 
-        {/* Config Section */}
         <section className="bg-white rounded shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Restaurant Config</h2>
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -290,43 +214,15 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
               <label className="block text-gray-700 font-medium mb-1">Future Cutoff (days)</label>
               <input name="futureCutoff" type="number" value={String(config.futureCutoff ?? '')} onChange={handleConfigChange} className="p-2 border rounded w-full" />
             </div>
-          </div>
-
-          <div className="mt-4 overflow-auto">
-            <table className="w-full text-sm border">
-              <thead>
-                <tr>
-                  {daysOfWeek.map(day => (
-                    <th key={day} className="border px-2 py-1 capitalize">{day}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  {daysOfWeek.map(day => (
-                    <td key={day + 'Open'} className="border px-1 py-1">
-                      <input type="time" name={`${day}Open`} value={config[`${day}Open`] || ''} onChange={handleConfigChange} className="w-full p-1 border rounded" />
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  {daysOfWeek.map(day => (
-                    <td key={day + 'Close'} className="border px-1 py-1">
-                      <input type="time" name={`${day}Close`} value={config[`${day}Close`] || ''} onChange={handleConfigChange} className="w-full p-1 border rounded" />
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex justify-end">
-            <button onClick={updateConfig} className="mt-4 bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600">
-              Update Config
-            </button>
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">Timezone</label>
+              <input name="timeZone" type="text" value={config.timeZone || ''} onChange={handleConfigChange} placeholder="e.g., America/Los_Angeles" className="p-2 border rounded w-full" />
+            </div>
           </div>
         </section>
       </main>
     </div>
   );
-}
+};
+
+export default DashboardTemplate;
