@@ -120,10 +120,10 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
       headers: { Authorization: `Bearer ${jwtToken}` },
     });
     const data = await res.json();
-    // Preserve actual hidden field value from Airtable (boolean or string)
+    // Convert Airtable "1"/"0" or boolean to strict boolean for UI
     const reservationsFromServer = (data.reservations || data || []).map((r: any) => ({
       ...r,
-      hidden: r.hidden ?? false, // only default to false if null/undefined
+      hidden: r.hidden === '1' || r.hidden === true, // treat "1" or true as hidden
     }));
     setReservations(reservationsFromServer);
   } catch (err) {
@@ -163,51 +163,51 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
 
     // [UPDATED] Create new row directly in Airtable and refresh
   const addNewRow = async () => {
-    if (!jwtToken) return;
-    try {
-      const newRow = editableFields.reduce((acc, key) => {
-        acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
-        return acc;
-      }, { restaurantId, hidden: false } as any);
+  if (!jwtToken) return;
+  try {
+    const newRow = editableFields.reduce((acc, key) => {
+      acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
+      return acc;
+    }, { restaurantId, hidden: '0' } as any); // hidden stored as "0"
 
-      await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
-        body: JSON.stringify([{ recordId: null, updatedFields: newRow }]),
-      });
+    await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
+      body: JSON.stringify([{ recordId: null, updatedFields: newRow }]),
+    });
 
-      fetchReservations(); // refresh to show new row
-    } catch (err) {
-      console.error('[ERROR] Adding new row failed:', err);
-    }
-  };
-
+    fetchReservations(); // refresh to show new row
+  } catch (err) {
+    console.error('[ERROR] Adding new row failed:', err);
+  }
+};
 
   const toggleRowSelection = (index: number) => {
     setSelectedRows((prev) => (prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]));
   };
 
-    // [UPDATED] Mark selected rows as hidden in Airtable and refresh
-  const deleteSelectedRows = async () => {
-    if (!jwtToken) return;
-    try {
-      const payload = selectedRows.map((index) => ({
-        recordId: reservations[index].id,
-        updatedFields: { hidden: true, restaurantId },
-      }));
+   // [UPDATED] Mark selected rows as hidden in Airtable and refresh
+const deleteSelectedRows = async () => {
+  if (!jwtToken) return;
+  try {
+    const payload = selectedRows.map((index) => ({
+      recordId: reservations[index].id,
+      updatedFields: { hidden: '1', restaurantId }, // store as "1" instead of boolean
+    }));
 
-      await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
-        body: JSON.stringify(payload),
-      });
+    await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
+      body: JSON.stringify(payload),
+    });
 
-      setSelectedRows([]);
-      fetchReservations(); // refresh to remove from list
-    } catch (err) {
-      console.error('[ERROR] Deleting rows failed:', err);
-    }
-  };
+    setSelectedRows([]);
+    fetchReservations(); // refresh to remove from list
+  } catch (err) {
+    console.error('[ERROR] Deleting rows failed:', err);
+  }
+};
+
 
 
   const updateConfig = async () => {
@@ -233,27 +233,32 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   };
 
     // [UPDATED] Include hidden records in updates
-  const updateReservations = async () => {
-    if (!jwtToken) return;
-    try {
-      const payload = reservations
-        .filter((res) => Object.keys(res).length > 0)
-        .map(({ id, rawConfirmationCode, dateFormatted, ...fields }) => ({
-          recordId: id,
-          updatedFields: { ...fields, restaurantId },
-        }));
+const updateReservations = async () => {
+  if (!jwtToken) return;
+  try {
+    const payload = reservations
+      .filter((res) => Object.keys(res).length > 0)
+      .map(({ id, rawConfirmationCode, dateFormatted, hidden, ...fields }) => ({
+        recordId: id,
+        updatedFields: { 
+          ...fields, 
+          hidden: hidden ? '1' : '0', // store as "1" or "0"
+          restaurantId 
+        },
+      }));
 
-      await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
-        body: JSON.stringify(payload),
-      });
-      alert('Reservations updated');
-      fetchReservations(); // refresh to see changes
-    } catch (err) {
-      console.error('[ERROR] Updating reservations failed:', err);
-    }
-  };
+    await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
+      body: JSON.stringify(payload),
+    });
+    alert('Reservations updated');
+    fetchReservations(); // refresh to see changes
+  } catch (err) {
+    console.error('[ERROR] Updating reservations failed:', err);
+  }
+};
+
 
     const filteredReservations = reservations
     .filter((r) => !r.hidden)
