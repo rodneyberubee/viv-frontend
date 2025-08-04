@@ -313,9 +313,12 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
               <tr>
                 {editableFields.map((key) => (
                   key === 'status' ? (
-                    <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
+                    <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium relative group">
                       {headerLabels[key]} 
-                      <span className="ml-1 text-gray-400 cursor-help" title={statusTooltip}>?</span>
+                      <span className="ml-1 text-gray-400 cursor-help">?</span>
+                      <div className="absolute left-0 mt-1 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        {statusTooltip}
+                      </div>
                     </th>
                   ) : (
                     <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
@@ -382,18 +385,18 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
             </div>
           </div>
           <div className="mt-4 overflow-auto">
-            <table className="w-full text-sm border">
-              <thead>
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
                 <tr>
                   {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
-                    <th key={day} className="border px-2 py-1 capitalize">{day}</th>
+                    <th key={day} className="px-3 py-2 text-left text-gray-700 font-medium capitalize">{day}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                <tr>
+                <tr className="hover:bg-gray-50">
                   {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
-                    <td key={day + 'Open'} className="border px-1 py-1">
+                    <td key={day + 'Open'} className="px-3 py-2 border-t">
                       <input
                         type="text"
                         placeholder="HH:mm or HH:mm AM/PM"
@@ -405,9 +408,9 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
                     </td>
                   ))}
                 </tr>
-                <tr>
+                <tr className="hover:bg-gray-50">
                   {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
-                    <td key={day + 'Close'} className="border px-1 py-1">
+                    <td key={day + 'Close'} className="px-3 py-2 border-t">
                       <input
                         type="text"
                         placeholder="HH:mm or HH:mm AM/PM"
