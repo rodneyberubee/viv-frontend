@@ -195,7 +195,10 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
     } catch (err) { console.error('[ERROR] Updating config failed:', err); }
   };
 
-  const restaurantTz = config.timeZone || 'America/Los_Angeles';
+  // Ensure timeZone is always valid for the dropdown
+  const validTimeZone = usTimeZones.includes(config.timeZone || '') ? config.timeZone : 'America/Los_Angeles';
+
+  const restaurantTz = validTimeZone;
 
   if (loading) return <div className="p-8 text-center">Loading...</div>;
   if (!jwtToken) return <div className="p-8 text-center text-red-600">Authentication failed. Please log in again.</div>;
@@ -217,7 +220,7 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
             </div>
             <div>
               <label className="block text-gray-700 font-medium mb-1">Timezone</label>
-              <select name="timeZone" value={config.timeZone || 'America/Los_Angeles'} onChange={handleConfigChange} className="p-2 border rounded w-full">
+              <select name="timeZone" value={validTimeZone} onChange={handleConfigChange} className="p-2 border rounded w-full">
                 {usTimeZones.map((tz) => (
                   <option key={tz} value={tz}>{tz}</option>
                 ))}
