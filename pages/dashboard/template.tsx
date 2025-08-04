@@ -1,13 +1,16 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { DateTime } from 'luxon';
 
 type Config = {
   maxReservations: number;
   futureCutoff: number;
+  timeZone?: string;
   [key: string]: any;
 };
 
-type DashboardProps = { restaurantId: string };
+type DashboardProps = {
+  restaurantId: string;
+};
 
 const headerLabels: Record<string, string> = {
   date: 'Date',
@@ -21,127 +24,65 @@ const headerLabels: Record<string, string> = {
 
 const editableFields = ['date', 'timeSlot', 'name', 'partySize', 'contactInfo', 'status', 'confirmationCode'];
 
-// Parse JWT for expiration
-const parseJwt = (token: string): { exp: number } | null => {
-  try {
-    const base64 = token.split('.')[1];
-    return JSON.parse(atob(base64));
-  } catch {
-    return null;
-  }
-};
-
 const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [config, setConfig] = useState<Config>({ maxReservations: 0, futureCutoff: 0 });
+  const [config, setConfig] = useState<Config>({
+    maxReservations: 0,
+    futureCutoff: 0,
+    timeZone: 'America/Los_Angeles',
+  });
   const [reservations, setReservations] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<DateTime>(
     DateTime.now().setZone('America/Los_Angeles').startOf('day')
   );
-  const refreshTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  const restaurantTz = 'America/Los_Angeles';
-
-  // Centralized logout
-  const logout = () => {
-    localStorage.removeItem('jwtToken');
-    if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
-    window.location.href = '/login';
-  };
-
-  // Refresh token
-  const refreshToken = async (token: string) => {
-    try {
-      const res = await fetch('https://api.vivaitable.com/api/auth/refresh', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (data.token) {
-        localStorage.setItem('jwtToken', data.token);
-        setJwtToken(data.token);
-        scheduleTokenRefresh(data.token);
-        window.history.replaceState({}, '', window.location.pathname);
-        return data.token;
-      } else {
-        logout();
-      }
-    } catch {
-      logout();
-    }
-    return null;
-  };
-
-  // Schedule token refresh 5 minutes before expiration
-  const scheduleTokenRefresh = (token: string) => {
-    const decoded = parseJwt(token);
-    if (!decoded) return;
-    const expiresIn = decoded.exp * 1000 - Date.now();
-    const refreshBefore = expiresIn - 5 * 60 * 1000;
-    if (refreshBefore > 0) {
-      if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
-      refreshTimeout.current = setTimeout(() => refreshToken(token), refreshBefore);
-    }
-  };
-
-  // Verify token & refresh if needed
-  async function verifyToken(token: string, skipExpirationCheck = false) {
-    if (!skipExpirationCheck) {
-      const decoded = parseJwt(token);
-      if (!decoded || Date.now() >= decoded.exp * 1000) {
-        token = await refreshToken(token) || '';
-        if (!token) return;
-      }
-    }
-
-    try {
-      const res = await fetch('https://api.vivaitable.com/api/auth/login/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
-      });
-      const data = await res.json();
-      if (data.token) {
-        localStorage.setItem('jwtToken', data.token);
-        setJwtToken(data.token);
-        scheduleTokenRefresh(data.token);
-        window.history.replaceState({}, '', window.location.pathname);
-      } else {
-        logout();
-      }
-    } catch (err) {
-      console.error('[ERROR] Verifying token failed:', err);
-      logout();
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Init token on load
+  // Handle token exchange -> JWT
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get('token');
     const storedJwt = localStorage.getItem('jwtToken');
 
+    async function verifyToken(token: string) {
+      try {
+        const res = await fetch('https://api.vivaitable.com/api/auth/login/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        const data = await res.json();
+        if (data.token) {
+          localStorage.setItem('jwtToken', data.token);
+          setJwtToken(data.token);
+          window.history.replaceState({}, '', window.location.pathname);
+        } else {
+          localStorage.removeItem('jwtToken');
+          window.location.href = '/login';
+        }
+      } catch (err) {
+        console.error('[ERROR] Verifying token failed:', err);
+        localStorage.removeItem('jwtToken');
+        window.location.href = '/login';
+      } finally {
+        setLoading(false);
+      }
+    }
+
     if (urlToken) {
-      verifyToken(urlToken, true);
+      verifyToken(urlToken);
     } else if (storedJwt) {
       verifyToken(storedJwt);
     } else {
-      logout();
+      window.location.href = '/login';
     }
-
-    return () => {
-      if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
-    };
   }, []);
 
-  // API helpers
+  // Auto-logout if token is invalid on any fetch
   async function safeFetch(url: string, options: any) {
     const res = await fetch(url, options);
     if (res.status === 401) {
-      logout();
+      localStorage.removeItem('jwtToken');
+      window.location.href = '/login';
       throw new Error('Unauthorized');
     }
     return res;
@@ -154,20 +95,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         headers: { Authorization: `Bearer ${jwtToken}` },
       });
       const data = await res.json();
-
-      console.log('[DEBUG] Raw config response:', data); // <-- optional debug log
-
-      // Flatten Airtable-like responses if needed
-      const flatData = data.fields ? { ...data.fields } : { ...data };
-
-      // Ensure day fields exist so inputs are controlled
-      const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
-      days.forEach(day => {
-        if (!flatData[`${day}Open`]) flatData[`${day}Open`] = '';
-        if (!flatData[`${day}Close`]) flatData[`${day}Close`] = '';
-      });
-
-      setConfig(flatData);
+      setConfig(data);
     } catch (err) {
       console.error('[ERROR] Fetching config failed:', err);
     }
@@ -193,7 +121,12 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     }
   }
 
-  useEffect(() => { if (jwtToken) { fetchConfig(); fetchReservations(); } }, [jwtToken, selectedDate]);
+  useEffect(() => {
+    if (jwtToken) {
+      fetchConfig();
+      fetchReservations();
+    }
+  }, [jwtToken, config.timeZone, selectedDate]);
 
   useEffect(() => {
     const bc = new BroadcastChannel('reservations');
@@ -265,6 +198,8 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     }
   };
 
+  const reservationHidden = ['id', 'rawConfirmationCode', 'dateFormatted', 'notes', 'restaurantId'];
+  const restaurantTz = config.timeZone || 'America/Los_Angeles';
   const format24hr = (time: string) => {
     if (!time) return '';
     const dt = DateTime.fromISO(`2000-01-01T${time}`, { zone: restaurantTz });
@@ -371,7 +306,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
                   {editableFields.map((key) => (
                     <td key={key} className="px-3 py-2">
                       <input
-                        type={key === 'timeSlot' ? 'text' : key === 'date' ? 'date' : 'text'}
+                        type={key === 'timeSlot' ? 'time' : key === 'date' ? 'date' : 'text'}
                         name={key}
                         value={key === 'timeSlot' ? format24hr(String(res[key])) : String(res[key] ?? '')}
                         onChange={(e) => handleReservationEdit(e, res.id, i)}
@@ -419,6 +354,17 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
                 className="p-2 border rounded w-full"
               />
             </div>
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">Timezone</label>
+              <input
+                name="timeZone"
+                type="text"
+                value={config.timeZone || ''}
+                onChange={handleConfigChange}
+                placeholder="e.g., America/Los_Angeles"
+                className="p-2 border rounded w-full"
+              />
+            </div>
           </div>
           <div className="mt-4 overflow-auto">
             <table className="w-full text-sm border">
@@ -434,7 +380,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
                   {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
                     <td key={day + 'Open'} className="border px-1 py-1">
                       <input
-                        type="text"
+                        type="time"
                         name={`${day}Open`}
                         value={config[`${day}Open`] || ''}
                         onChange={handleConfigChange}
@@ -447,7 +393,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
                   {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
                     <td key={day + 'Close'} className="border px-1 py-1">
                       <input
-                        type="text"
+                        type="time"
                         name={`${day}Close`}
                         value={config[`${day}Close`] || ''}
                         onChange={handleConfigChange}
