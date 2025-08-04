@@ -33,6 +33,11 @@ const headerLabels: Record<string, string> = {
 const editableFields = ['date', 'timeSlot', 'name', 'partySize', 'contactInfo', 'status', 'confirmationCode'];
 const daysOfWeek = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
+// Helper: Validate time format
+function isValidTimeFormat(value: string) {
+  return /^([0-1]?[0-9]|2[0-3]):[0-5][0-9](\s?(AM|PM))?$/i.test(value);
+}
+
 export default function DashboardTemplate({ restaurantId }: DashboardProps) {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -174,6 +179,16 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
   const handleReservationEdit = (e: React.ChangeEvent<HTMLInputElement>, id: string | undefined, index: number) => { const { name, value } = e.target; setReservations((prev) => prev.map((res, i) => res.id === id || (!res.id && i === index) ? { ...res, [name]: value } : res)); };
 
   const updateConfig = async () => {
+    // Validate times before sending
+    for (const day of daysOfWeek) {
+      const open = config[`${day}Open`];
+      const close = config[`${day}Close`];
+      if ((open && !isValidTimeFormat(open)) || (close && !isValidTimeFormat(close))) {
+        alert(`Invalid time format for ${day}. Use HH:mm or h:mm AM/PM.`);
+        return;
+      }
+    }
+
     if (!jwtToken) return;
     try {
       await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateConfig`, {
@@ -328,14 +343,14 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
                 <tr>
                   {daysOfWeek.map(day => (
                     <td key={day + 'Open'} className="border px-1 py-1">
-                      <input type="time" name={`${day}Open`} value={config[`${day}Open`] || ''} onChange={handleConfigChange} className="w-full p-1 border rounded" />
+                      <input type="text" placeholder="e.g., 10:00 or 10:00 AM" name={`${day}Open`} value={config[`${day}Open`] || ''} onChange={handleConfigChange} className="w-full p-1 border rounded" />
                     </td>
                   ))}
                 </tr>
                 <tr>
                   {daysOfWeek.map(day => (
                     <td key={day + 'Close'} className="border px-1 py-1">
-                      <input type="time" name={`${day}Close`} value={config[`${day}Close`] || ''} onChange={handleConfigChange} className="w-full p-1 border rounded" />
+                      <input type="text" placeholder="e.g., 22:00 or 10:00 PM" name={`${day}Close`} value={config[`${day}Close`] || ''} onChange={handleConfigChange} className="w-full p-1 border rounded" />
                     </td>
                   ))}
                 </tr>
@@ -350,6 +365,3 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
           </div>
         </section>
       </main>
-    </div>
-  );
-}
