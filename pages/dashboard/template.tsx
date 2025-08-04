@@ -156,22 +156,54 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     );
   };
 
-  const addNewRow = () => {
-    const newRow = editableFields.reduce((acc, key) => {
-      acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
-      return acc;
-    }, { restaurantId, hidden: false } as any);
-    setReservations((prev) => [...prev, newRow]);
+    // [UPDATED] Create new row directly in Airtable and refresh
+  const addNewRow = async () => {
+    if (!jwtToken) return;
+    try {
+      const newRow = editableFields.reduce((acc, key) => {
+        acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
+        return acc;
+      }, { restaurantId, hidden: false } as any);
+
+      await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
+        body: JSON.stringify([{ recordId: null, updatedFields: newRow }]),
+      });
+
+      fetchReservations(); // refresh to show new row
+    } catch (err) {
+      console.error('[ERROR] Adding new row failed:', err);
+    }
   };
+
 
   const toggleRowSelection = (index: number) => {
     setSelectedRows((prev) => (prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]));
   };
 
-  const deleteSelectedRows = () => {
-    setReservations((prev) => prev.map((res, i) => (selectedRows.includes(i) ? { ...res, hidden: true } : res)));
-    setSelectedRows([]);
+    // [UPDATED] Mark selected rows as hidden in Airtable and refresh
+  const deleteSelectedRows = async () => {
+    if (!jwtToken) return;
+    try {
+      const payload = selectedRows.map((index) => ({
+        recordId: reservations[index].id,
+        updatedFields: { hidden: true, restaurantId },
+      }));
+
+      await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
+        body: JSON.stringify(payload),
+      });
+
+      setSelectedRows([]);
+      fetchReservations(); // refresh to remove from list
+    } catch (err) {
+      console.error('[ERROR] Deleting rows failed:', err);
+    }
   };
+
 
   const updateConfig = async () => {
     if (!jwtToken) return;
@@ -195,11 +227,12 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     }
   };
 
+    // [UPDATED] Include hidden records in updates
   const updateReservations = async () => {
     if (!jwtToken) return;
     try {
       const payload = reservations
-        .filter((res) => !res.hidden && Object.keys(res).length > 0 && res.confirmationCode)
+        .filter((res) => Object.keys(res).length > 0)
         .map(({ id, rawConfirmationCode, dateFormatted, ...fields }) => ({
           recordId: id,
           updatedFields: { ...fields, restaurantId },
@@ -211,6 +244,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         body: JSON.stringify(payload),
       });
       alert('Reservations updated');
+      fetchReservations(); // refresh to see changes
     } catch (err) {
       console.error('[ERROR] Updating reservations failed:', err);
     }
