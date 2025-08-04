@@ -23,6 +23,11 @@ const headerLabels: Record<string, string> = {
 
 const editableFields = ['date', 'timeSlot', 'name', 'partySize', 'contactInfo', 'status', 'confirmationCode'];
 
+const statusTooltip = `Status options:
+- Confirmed: Guest reservation
+- Canceled: Reservation was canceled
+- Blocked: Host blocks this time slot (no reservations allowed)`;
+
 const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -307,9 +312,16 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
             <thead className="bg-gray-50">
               <tr>
                 {editableFields.map((key) => (
-                  <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
-                    {headerLabels[key] || key}
-                  </th>
+                  key === 'status' ? (
+                    <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
+                      {headerLabels[key]} 
+                      <span className="ml-1 text-gray-400 cursor-help" title={statusTooltip}>?</span>
+                    </th>
+                  ) : (
+                    <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
+                      {headerLabels[key] || key}
+                    </th>
+                  )
                 ))}
               </tr>
             </thead>
