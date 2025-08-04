@@ -41,24 +41,23 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     const urlToken = params.get('token');
     const storedJwt = localStorage.getItem('jwtToken');
 
-    async function verifyToken(token: string) {
+    async function exchangeForJwt(tempToken: string) {
       try {
         const res = await fetch('https://api.vivaitable.com/api/auth/login/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
+          body: JSON.stringify({ token: tempToken }),
         });
         const data = await res.json();
         if (data.token) {
           localStorage.setItem('jwtToken', data.token);
           setJwtToken(data.token);
-          window.history.replaceState({}, '', window.location.pathname);
+          window.history.replaceState({}, '', window.location.pathname); // clean URL
         } else {
-          localStorage.removeItem('jwtToken');
-          window.location.href = '/login';
+          throw new Error('Invalid login token');
         }
       } catch (err) {
-        console.error('[ERROR] Verifying token failed:', err);
+        console.error('[ERROR] Token exchange failed:', err);
         localStorage.removeItem('jwtToken');
         window.location.href = '/login';
       } finally {
@@ -67,11 +66,12 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     }
 
     if (urlToken) {
-      verifyToken(urlToken);
+      exchangeForJwt(urlToken); // First-time login from email token
     } else if (storedJwt) {
-      verifyToken(storedJwt);
+      setJwtToken(storedJwt); // Use existing JWT
+      setLoading(false);
     } else {
-      window.location.href = '/login';
+      window.location.href = '/login'; // No token at all
     }
   }, []);
 
