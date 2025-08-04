@@ -33,13 +33,12 @@ const headerLabels: Record<string, string> = {
 const editableFields = ['date', 'timeSlot', 'name', 'partySize', 'contactInfo', 'status', 'confirmationCode'];
 const daysOfWeek = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
-// Status explanations for tooltip
-const statusInfo = {
-  confirmed: 'Reservation confirmed',
-  pending: 'Reservation not yet confirmed',
-  blocked: 'Time slot blocked/unavailable',
-  cancelled: 'Reservation cancelled',
-};
+// Tooltip content for Status
+const statusInfo = `
+• Confirmed: Reservation is confirmed.
+• Canceled: Reservation was canceled.
+• Blocked: Slot is blocked/unavailable.
+`;
 
 export default function DashboardTemplate({ restaurantId }: DashboardProps) {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
@@ -225,18 +224,19 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
 
       {/* Main */}
       <main className="flex-1 p-8 space-y-8">
+        {/* Top Section with Date Switcher */}
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Reservations</h1>
+          <div>
+            <h1 className="text-3xl font-bold">Reservations</h1>
+            <div className="flex items-center space-x-2 mt-2">
+              <button onClick={() => setSelectedDate(prev => prev.minus({ days: 1 }))} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Prev</button>
+              <input type="date" value={selectedDate.toFormat('yyyy-MM-dd')} onChange={(e) => setSelectedDate(DateTime.fromISO(e.target.value, { zone: restaurantTz }))} className="p-2 border rounded" />
+              <button onClick={() => setSelectedDate(prev => prev.plus({ days: 1 }))} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Next</button>
+            </div>
+          </div>
           <button onClick={updateReservations} className="bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600">
             Update Reservations
           </button>
-        </div>
-
-        {/* Day switcher */}
-        <div className="flex items-center justify-center space-x-4 mt-4">
-          <button onClick={() => setSelectedDate(prev => prev.minus({ days: 1 }))} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Prev</button>
-          <input type="date" value={selectedDate.toFormat('yyyy-MM-dd')} onChange={(e) => setSelectedDate(DateTime.fromISO(e.target.value, { zone: restaurantTz }))} className="p-2 border rounded" />
-          <button onClick={() => setSelectedDate(prev => prev.plus({ days: 1 }))} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Next</button>
         </div>
 
         {/* Reservations Table */}
@@ -244,19 +244,23 @@ export default function DashboardTemplate({ restaurantId }: DashboardProps) {
           <h2 className="text-xl font-semibold mb-4">
             Reservations for {selectedDate.toFormat('MMMM dd, yyyy')}
           </h2>
-          <p className="text-sm text-gray-500 mb-2">
-            <strong>Status Guide:</strong>{" "}
-            {Object.entries(statusInfo).map(([status, desc]) => (
-              <span key={status} title={desc} className="underline cursor-help mr-2">
-                {status}
-              </span>
-            ))}
-          </p>
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
                 {editableFields.map((key) => (
-                  <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">{headerLabels[key] || key}</th>
+                  <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
+                    {headerLabels[key] || key}
+                    {key === 'status' && (
+                      <span
+                        className="ml-2 text-gray-400 cursor-pointer relative group"
+                      >
+                        ?
+                        <div className="absolute left-0 bottom-full mb-2 w-48 p-2 bg-white border rounded shadow-lg text-xs text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {statusInfo}
+                        </div>
+                      </span>
+                    )}
+                  </th>
                 ))}
               </tr>
             </thead>
