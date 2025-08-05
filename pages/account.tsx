@@ -80,19 +80,46 @@ const AccountCreation = () => {
 
     try {
       setLoading(true);
+      // Step 1: Create restaurant record (pending status)
       const res = await fetch('https://api.vivaitable.com/api/account/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsedForm),
       });
-      if (res.ok) {
-        alert('Account successfully created!');
-      } else {
+
+      if (!res.ok) {
         const err = await res.json();
         alert(`Error: ${err.error || 'Failed to create account'}`);
+        return;
+      }
+
+      const { restaurantId, email } = await res.json();
+      if (!restaurantId || !email) {
+        alert('Account created but missing required data for checkout.');
+        return;
+      }
+
+      // Step 2: Create Stripe checkout session
+      const stripeRes = await fetch('https://api.vivaitable.com/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurantId, email }),
+      });
+
+      if (!stripeRes.ok) {
+        const err = await stripeRes.json();
+        alert(`Error: ${err.error || 'Failed to create checkout session'}`);
+        return;
+      }
+
+      const { url } = await stripeRes.json();
+      if (url) {
+        window.location.href = url; // Redirect to Stripe Checkout
+      } else {
+        alert('Failed to start payment process.');
       }
     } catch (err) {
-      console.error('[ERROR] Account creation failed:', err);
+      console.error('[ERROR] Account creation/checkout failed:', err);
     } finally {
       setLoading(false);
     }
