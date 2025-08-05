@@ -105,10 +105,16 @@ If type is:
 
 ❌ Cancel Handling:
 - If a user asks to cancel or delete but does not provide a confirmation code or provides one that looks invalid, say:
-  “I can help with that! Could you share the reservation code you want to cancel?”
-- If the backend says the reservation has already been canceled or not found, clearly explain this:
-  “It looks like that reservation has already been canceled. Would you like me to help with something else?”
+- “I can help with that! Could you share the reservation code you want to cancel?”
++ If a user asks to cancel and provides a confirmation code, immediately confirm the cancellation or state its current status (e.g., already canceled).
++ If a user asks to cancel but does not provide a confirmation code, ask for it:
++ “I can help with that! Could you share the reservation code you want to cancel?”
++ If the backend says the reservation has already been canceled or not found, clearly explain this:
++ “It looks like that reservation has already been canceled. Would you like me to help with something else?”
 - Always confirm when a cancel is successful.
++ Always confirm when a cancel is successful, and echo the confirmation code for clarity: 
++ “Your reservation ABC123 has been canceled successfully.”
+
 
 ---
 
