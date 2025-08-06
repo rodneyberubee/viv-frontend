@@ -15,7 +15,7 @@ const IndexPage = () => {
             <Link href="/login" className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600">
               Sign In
             </Link>
-            <Link href="/signup" className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300">
+            <Link href="/account" className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300">
               Create Account
             </Link>
           </nav>
@@ -32,7 +32,7 @@ const IndexPage = () => {
             Let Viv handle bookings, cancellations, and availability—so you can focus on your guests.
           </p>
           <div className="mt-8 space-x-4">
-            <Link href="/signup" className="bg-orange-500 text-white px-6 py-3 rounded shadow hover:bg-orange-600">
+            <Link href="/account" className="bg-orange-500 text-white px-6 py-3 rounded shadow hover:bg-orange-600">
               Get Started
             </Link>
             <Link href="#pricing" className="bg-gray-200 text-gray-700 px-6 py-3 rounded shadow hover:bg-gray-300">
@@ -86,7 +86,7 @@ const IndexPage = () => {
                 <li>✓ Host dashboard & reporting</li>
               </ul>
               <Link
-                href="/signup"
+                href="/account"
                 className="mt-6 inline-block bg-orange-500 text-white px-6 py-3 rounded shadow hover:bg-orange-600"
               >
                 Get Started
