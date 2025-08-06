@@ -10,8 +10,6 @@ const ContactPage = () => {
           <h1 className="text-2xl font-bold text-orange-500">VivAI Table</h1>
           <nav className="space-x-6">
             <Link href="/" className="text-gray-700 hover:text-orange-500">Home</Link>
-            <Link href="/#features" className="text-gray-700 hover:text-orange-500">Features</Link>
-            <Link href="/#pricing" className="text-gray-700 hover:text-orange-500">Pricing</Link>
             <Link href="/login" className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600">
               Sign In
             </Link>
