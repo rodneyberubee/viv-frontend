@@ -1,18 +1,7 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
 
 const IndexPage = () => {
-  const router = useRouter();
-
-  // Redirect to dashboard if user is already logged in
-  useEffect(() => {
-    const token = localStorage.getItem('jwtToken');
-    if (token) {
-      router.push('/dashboard');
-    }
-  }, [router]);
-
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       {/* Header */}
