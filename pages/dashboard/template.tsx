@@ -1,12 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { DateTime } from 'luxon';
 
-type Config = {
-  maxReservations: number;
-  futureCutoff: number;
-  [key: string]: any;
-};
-
 type DashboardProps = {
   restaurantId: string;
 };
@@ -355,80 +349,6 @@ const updateReservations = async () => {
             <input type="date" value={selectedDate.toFormat('yyyy-MM-dd')} onChange={onDateChange} className="p-2 border rounded" />
             <button onClick={goToNextDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
               Next
-            </button>
-          </div>
-        </section>
-
-        <section className="bg-white rounded shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Restaurant Config</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Max Reservations</label>
-              <input
-                name="maxReservations"
-                type="number"
-                value={String(config.maxReservations ?? '')}
-                onChange={handleConfigChange}
-                className="p-2 border rounded w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Future Cutoff (days)</label>
-              <input
-                name="futureCutoff"
-                type="number"
-                value={String(config.futureCutoff ?? '')}
-                onChange={handleConfigChange}
-                className="p-2 border rounded w-full"
-              />
-            </div>
-          </div>
-          <div className="mt-4 overflow-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
-                    <th key={day} className="px-3 py-2 text-left text-gray-700 font-medium capitalize">
-                      {day}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="hover:bg-gray-50">
-                  {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
-                    <td key={day + 'Open'} className="px-3 py-2 border-t">
-                      <input
-                        type="text"
-                        placeholder="HH:mm or HH:mm AM/PM"
-                        name={`${day}Open`}
-                        value={config[`${day}Open`] || ''}
-                        onChange={handleConfigChange}
-                        className="w-full p-1 border rounded"
-                      />
-                    </td>
-                  ))}
-                </tr>
-                <tr className="hover:bg-gray-50">
-                  {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
-                    <td key={day + 'Close'} className="px-3 py-2 border-t">
-                      <input
-                        type="text"
-                        placeholder="HH:mm or HH:mm AM/PM"
-                        name={`${day}Close`}
-                        value={config[`${day}Close`] || ''}
-                        onChange={handleConfigChange}
-                        className="w-full p-1 border rounded"
-                      />
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div className="flex justify-end">
-            <button onClick={updateConfig} className="mt-4 bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600">
-              Update Config
             </button>
           </div>
         </section>
