@@ -112,79 +112,118 @@ const SettingsPage = ({ restaurantId }: SettingsProps) => {
   if (loading) return <div className="p-8 text-center">Loading...</div>;
 
   return (
-    <main className="min-h-screen p-8 bg-gray-100 space-y-8">
-      <h1 className="text-3xl font-bold">Restaurant Settings</h1>
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+    <div className="flex min-h-screen bg-gray-100">
+      <aside className="w-64 bg-white shadow-md p-6 space-y-6">
+        <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
         <div>
-          <label className="block text-gray-700 font-medium mb-1">Max Reservations</label>
-          <input
-            name="maxReservations"
-            type="number"
-            value={String(config.maxReservations ?? '')}
-            onChange={handleConfigChange}
-            className="p-2 border rounded w-full"
-          />
+          <p className="text-sm text-gray-600 mb-2">Your Viv AI Link</p>
+          <div className="flex space-x-2">
+            <input
+              type="text"
+              value={`https://vivaitable.com/${restaurantId}`}
+              readOnly
+              className="w-full p-2 border rounded bg-gray-100 text-sm"
+            />
+            <button
+              onClick={() => navigator.clipboard.writeText(`https://vivaitable.com/${restaurantId}`)}
+              className="bg-orange-500 text-white px-3 py-2 rounded hover:bg-orange-600"
+            >
+              Copy
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">Share this link for direct AI reservations.</p>
         </div>
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">Future Cutoff (days)</label>
-          <input
-            name="futureCutoff"
-            type="number"
-            value={String(config.futureCutoff ?? '')}
-            onChange={handleConfigChange}
-            className="p-2 border rounded w-full"
-          />
+        <a
+          href={`/dashboard/${restaurantId}`}
+          className="block text-orange-600 hover:underline text-sm mt-4"
+        >
+          Reservations
+        </a>
+        <a
+          href="/dashboard/how-to-dashboard"
+          className="block text-orange-600 hover:underline text-sm"
+        >
+          How the Dashboard Works
+        </a>
+      </aside>
+
+      <main className="flex-1 p-8 space-y-8">
+        <h1 className="text-3xl font-bold">Restaurant Settings</h1>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-gray-700 font-medium mb-1">Max Reservations</label>
+            <input
+              name="maxReservations"
+              type="number"
+              value={String(config.maxReservations ?? '')}
+              onChange={handleConfigChange}
+              className="p-2 border rounded w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-gray-700 font-medium mb-1">Future Cutoff (days)</label>
+            <input
+              name="futureCutoff"
+              type="number"
+              value={String(config.futureCutoff ?? '')}
+              onChange={handleConfigChange}
+              className="p-2 border rounded w-full"
+            />
+          </div>
         </div>
-      </div>
-      <div className="overflow-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
-                <th key={day} className="px-3 py-2 text-left text-gray-700 font-medium capitalize">
-                  {day}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="hover:bg-gray-50">
-              {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
-                <td key={day + 'Open'} className="px-3 py-2 border-t">
-                  <input
-                    type="text"
-                    placeholder="HH:mm or HH:mm AM/PM"
-                    name={`${day}Open`}
-                    value={config[`${day}Open`] || ''}
-                    onChange={handleConfigChange}
-                    className="w-full p-1 border rounded"
-                  />
-                </td>
-              ))}
-            </tr>
-            <tr className="hover:bg-gray-50">
-              {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
-                <td key={day + 'Close'} className="px-3 py-2 border-t">
-                  <input
-                    type="text"
-                    placeholder="HH:mm or HH:mm AM/PM"
-                    name={`${day}Close`}
-                    value={config[`${day}Close`] || ''}
-                    onChange={handleConfigChange}
-                    className="w-full p-1 border rounded"
-                  />
-                </td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div className="flex justify-end">
-        <button onClick={updateConfig} className="mt-4 bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600">
-          Update Config
-        </button>
-      </div>
-    </main>
+        <div className="overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
+                  <th key={day} className="px-3 py-2 text-left text-gray-700 font-medium capitalize">
+                    {day}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="hover:bg-gray-50">
+                {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
+                  <td key={day + 'Open'} className="px-3 py-2 border-t">
+                    <input
+                      type="text"
+                      placeholder="HH:mm or HH:mm AM/PM"
+                      name={`${day}Open`}
+                      value={config[`${day}Open`] || ''}
+                      onChange={handleConfigChange}
+                      className="w-full p-1 border rounded"
+                    />
+                  </td>
+                ))}
+              </tr>
+              <tr className="hover:bg-gray-50">
+                {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
+                  <td key={day + 'Close'} className="px-3 py-2 border-t">
+                    <input
+                      type="text"
+                      placeholder="HH:mm or HH:mm AM/PM"
+                      name={`${day}Close`}
+                      value={config[`${day}Close`] || ''}
+                      onChange={handleConfigChange}
+                      className="w-full p-1 border rounded"
+                    />
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div className="flex justify-end">
+          <button
+            onClick={updateConfig}
+            className="mt-4 bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600"
+          >
+            Update Config
+          </button>
+        </div>
+      </main>
+    </div>
   );
 };
 
