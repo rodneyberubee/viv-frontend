@@ -1,6 +1,6 @@
 import React from 'react';
 import { useRouter } from 'next/router';
-import SettingsPage from '../../components/template'; // adjust path if needed
+import SettingsPage from '../../settings/template'; // adjust path if needed
 
 const SettingsDynamic = () => {
   const router = useRouter();
