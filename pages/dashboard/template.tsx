@@ -220,7 +220,14 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
           </div>
           <p className="text-xs text-gray-500 mt-2">Share this link for direct AI reservations.</p>
         </div>
+        <Link
+          href={`/settings/${restaurantId}`}
+          className="block text-orange-600 hover:underline text-sm mt-4"
+        >
+          Go to Settings
+        </Link>
       </aside>
+
 
       <main className="flex-1 p-8 space-y-8">
         <div className="flex justify-between items-center">
