@@ -1,6 +1,6 @@
 import React from 'react';
 import { useRouter } from 'next/router';
-import SettingsPage from '../../settings/template'; // adjust path if needed
+import Template from './template'; // ✅ Correct relative path inside the same folder
 
 const SettingsDynamic = () => {
   const router = useRouter();
@@ -10,7 +10,7 @@ const SettingsDynamic = () => {
     return <div className="p-8 text-center">Loading...</div>;
   }
 
-  return <SettingsPage restaurantId={restaurantId} />;
+  return <Template restaurantId={restaurantId} />;
 };
 
 export default SettingsDynamic;
