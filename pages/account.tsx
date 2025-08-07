@@ -131,17 +131,14 @@ const AccountCreation = () => {
             <Link href="/login" className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600">
               Sign In
             </Link>
-            <Link href="/account" className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300">
-              Create Account
-            </Link>
           </nav>
         </div>
       </header>
 
-      <main className="flex-1 max-w-4xl mx-auto px-6 py-16">
-        <h2 className="text-3xl font-bold mb-6">Create Your Restaurant Account</h2>
+      <main className="flex-1 px-4 py-12 flex justify-center items-start">
+        <section className="bg-white rounded shadow p-6 space-y-6 w-full max-w-3xl">
+          <h2 className="text-3xl font-bold mb-4">Create Your Restaurant Account</h2>
 
-        <section className="bg-white rounded shadow p-6 space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div>
               <label className="block text-gray-700 font-medium mb-1">
