@@ -13,8 +13,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     await resend.emails.send({
-      from: 'VivAI Table <no-reply@vivaitable.com>',
-      to: 'youremail@domain.com', // <-- replace with your email
+      from: 'VivAI Table <reservations@vivaitable.com>',
+      to: 'rodney@vivaitable.com',
       subject: `New Contact Form Submission from ${name}`,
       html: `
         <p><strong>Name:</strong> ${name}</p>
