@@ -225,7 +225,10 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
           href={`/settings/${restaurantId}`}
           className="block text-orange-600 hover:underline text-sm mt-4"
         >
-          Go to Settings
+          Settings
+        </Link>
+        <Link href="/how-to-dashboard" className="block text-blue-600 hover:underline text-sm">
+          How the Dashboard Works
         </Link>
       </aside>
 
