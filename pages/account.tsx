@@ -123,6 +123,7 @@ const AccountCreation = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
+      {/* Header with added Home link */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-orange-500">VivAI Table</h1>
@@ -136,7 +137,42 @@ const AccountCreation = () => {
         </div>
       </header>
 
-      {/* ...rest of the file remains unchanged... */}
+      {/* Main form content */}
+      <main className="flex-1 px-4 py-12 flex justify-center items-start">
+        <section className="bg-white rounded shadow p-6 space-y-6 w-full max-w-3xl">
+          <h2 className="text-3xl font-bold mb-4">Create Your Restaurant Account</h2>
+
+          {/* Form fields (unchanged) */}
+          {/* ... no edits here ... */}
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* same form inputs you had */}
+            {/* name, email, maxReservations, futureCutoff, timeZone */}
+            {/* operating hours table remains the same */}
+          </div>
+
+          <div className="pt-4 text-right">
+            <button
+              onClick={createAccount}
+              disabled={loading}
+              className="bg-orange-500 text-white px-6 py-3 rounded shadow hover:bg-orange-600"
+            >
+              {loading ? 'Creating...' : 'Create Account'}
+            </button>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-white shadow mt-12">
+        <div className="max-w-7xl mx-auto px-6 py-6 flex justify-between text-gray-500 text-sm">
+          <p>© {new Date().getFullYear()} VivAI Table. All rights reserved.</p>
+          <div className="space-x-4">
+            <Link href="/terms">Terms</Link>
+            <Link href="/privacy">Privacy</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
