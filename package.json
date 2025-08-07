@@ -14,7 +14,8 @@
     "openai": "^5.8.2",
     "react": "latest",
     "react-dom": "latest",
-    "jwt-decode": "^4.0.0"
+    "jwt-decode": "^4.0.0",
+    "resend": "^4.6.0"
   },
   "devDependencies": {
     "@types/node": "24.0.10",
