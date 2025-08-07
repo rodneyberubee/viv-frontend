@@ -1,4 +1,4 @@
-Move the setting button to the side bar and just make it a link that takes them to settings as well as the tooltip changes as youve stated above. Here’s my code, make your suggested edits maintaining the integrity of the rest of the code, give me the full script back:
+Here’s my code, make your suggested edits maintaining the integrity of the rest of the code, give me the full script back:
 import React, { useEffect, useState } from 'react';
 import { DateTime } from 'luxon';
 
@@ -32,6 +32,10 @@ const statusTooltip = `Status options:
 const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [config, setConfig] = useState<Config>({
+    maxReservations: 0,
+    futureCutoff: 0,
+  });
   const [reservations, setReservations] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<DateTime>(DateTime.now().startOf('day'));
 
@@ -45,6 +49,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     }
   };
 
+  // Handle token exchange -> JWT
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get('token');
@@ -84,6 +89,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     }
   }, []);
 
+  // Auto-logout if token is invalid
   async function safeFetch(url: string, options: any) {
     const res = await fetch(url, options);
     if (res.status === 401) {
@@ -94,6 +100,19 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     return res;
   }
 
+  async function fetchConfig() {
+    if (!jwtToken) return;
+    try {
+      const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/config`, {
+        headers: { Authorization: `Bearer ${jwtToken}` },
+      });
+      const data = await res.json();
+      setConfig(data.config || data);
+    } catch (err) {
+      console.error('[ERROR] Fetching config failed:', err);
+    }
+  }
+
   async function fetchReservations() {
     if (!jwtToken) return;
     try {
@@ -101,50 +120,61 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         headers: { Authorization: `Bearer ${jwtToken}` },
       });
       const data = await res.json();
-      const reservationsFromServer = data.reservations || data || [];
+      const reservationsFromServer = data.reservations || data || []; // <-- plain array, no mapping for hidden
       setReservations(reservationsFromServer);
     } catch (err) {
       console.error('[ERROR] Fetching reservations failed:', err);
     }
   }
 
+
+
   useEffect(() => {
     if (jwtToken) {
+      fetchConfig();
       fetchReservations();
     }
   }, [jwtToken, selectedDate]);
 
-  useEffect(() => {
-    const bc = new BroadcastChannel('reservations');
-    bc.onmessage = (e) => {
-      if (e.data.type === 'reservationUpdate') {
-        fetchReservations();
-      }
-    };
-
-    let interval: any;
-    if (jwtToken) {
-      interval = setInterval(async () => {
-        try {
-          const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/refreshFlag`, {
-            headers: { Authorization: `Bearer ${jwtToken}` },
-          });
-          const data = await res.json();
-          if (data.refresh === 1) {
-            console.log('[DEBUG] Refresh flag triggered, reloading data');
-            fetchReservations();
-          }
-        } catch (err) {
-          console.error('[ERROR] Refresh flag check failed:', err);
+    // Listen for BroadcastChannel + poll refreshFlag
+    useEffect(() => {
+      const bc = new BroadcastChannel('reservations');
+      bc.onmessage = (e) => {
+        if (e.data.type === 'reservationUpdate') {
+          fetchReservations();
         }
-      }, 5000);
-    }
+      };
+
+      let interval: any;
+      if (jwtToken) {
+        interval = setInterval(async () => {
+          try {
+            const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/refreshFlag`, {
+              headers: { Authorization: `Bearer ${jwtToken}` },
+            });
+            const data = await res.json();
+            if (data.refresh === 1) {
+              console.log('[DEBUG] Refresh flag triggered, reloading data');
+              fetchConfig();
+              fetchReservations();
+            }
+          } catch (err) {
+            console.error('[ERROR] Refresh flag check failed:', err);
+          }
+        }, 5000); // check every 5 seconds
+      }
 
     return () => {
       bc.close();
       if (interval) clearInterval(interval);
     };
   }, [jwtToken, restaurantId]);
+
+
+  const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setConfig((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleReservationEdit = (e: React.ChangeEvent<HTMLInputElement>, id: string | undefined, index: number) => {
     const { name, value } = e.target;
@@ -153,63 +183,90 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     );
   };
 
+    // [UPDATED] Create new row directly in Airtable and refresh
   const addNewRow = async () => {
-    if (!jwtToken) return;
-    try {
-      const newRow = editableFields.reduce((acc, key) => {
-        acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
-        return acc;
-      }, { restaurantId } as any);
+  if (!jwtToken) return;
+  try {
+    const newRow = editableFields.reduce((acc, key) => {
+      acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
+      return acc;
+    }, { restaurantId } as any);
+    
+    await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
+      body: JSON.stringify([{ recordId: null, updatedFields: newRow }]),
+    });
 
-      await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
+    // Notify other tabs to refresh
+    const bc = new BroadcastChannel('reservations');
+    bc.postMessage({ type: 'reservationUpdate' });
+    bc.close();
+
+    fetchReservations(); // refresh to show new row
+
+  } catch (err) {
+    console.error('[ERROR] Adding new row failed:', err);
+  }
+};
+
+  const updateConfig = async () => {
+    if (!jwtToken) return;
+    const numericFields = ['maxReservations', 'futureCutoff'];
+    const excluded = ['restaurantId', 'baseId', 'tableId', 'name', 'autonumber', 'slug', 'calibratedTime', 'tableName'];
+    const cleaned = Object.fromEntries(
+      Object.entries(config)
+        .filter(([key]) => !excluded.includes(key))
+        .map(([key, val]) => [key, numericFields.includes(key) ? parseInt(String(val), 10) || 0 : val])
+    );
+
+    try {
+      await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateConfig`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
-        body: JSON.stringify([{ recordId: null, updatedFields: newRow }]),
+        body: JSON.stringify({ ...cleaned, restaurantId }),
       });
-
-      const bc = new BroadcastChannel('reservations');
-      bc.postMessage({ type: 'reservationUpdate' });
-      bc.close();
-
-      fetchReservations();
+      alert('Config updated');
     } catch (err) {
-      console.error('[ERROR] Adding new row failed:', err);
+      console.error('[ERROR] Updating config failed:', err);
     }
   };
 
-  const updateReservations = async () => {
-    if (!jwtToken) return;
-    try {
-      const payload = reservations
-        .filter((res) => Object.keys(res).length > 0)
-        .map(({ id, rawConfirmationCode, dateFormatted, ...fields }) => ({
-          recordId: id,
-          updatedFields: {
-            ...fields,
-            restaurantId,
-          },
-        }));
+const updateReservations = async () => {
+  if (!jwtToken) return;
+  try {
+    const payload = reservations
+      .filter((res) => Object.keys(res).length > 0)
+      .map(({ id, rawConfirmationCode, dateFormatted, ...fields }) => ({
+        recordId: id,
+        updatedFields: { 
+          ...fields,
+          restaurantId 
+        },
+      }));
 
-      await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
-        body: JSON.stringify(payload),
-      });
-      alert('Reservations updated');
-      fetchReservations();
-    } catch (err) {
-      console.error('[ERROR] Updating reservations failed:', err);
-    }
-  };
+    await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
+      body: JSON.stringify(payload),
+    });
+    alert('Reservations updated');
+    fetchReservations(); // refresh to see changes
+  } catch (err) {
+    console.error('[ERROR] Updating reservations failed:', err);
+  }
+};
 
-  const filteredReservations = reservations.filter((r) => {
-    const dt = DateTime.fromISO(r.date);
-    return dt.isValid && dt.hasSame(selectedDate, 'day');
-  }).sort((a, b) => {
-    const t1 = DateTime.fromISO(`${a.date}T${a.timeSlot || '00:00'}`);
-    const t2 = DateTime.fromISO(`${b.date}T${b.timeSlot || '00:00'}`);
-    return t1.toMillis() - t2.toMillis();
-  });
+    const filteredReservations = reservations.filter((r) => {
+      const dt = DateTime.fromISO(r.date);
+      // Show all reservations for the selected day, even if blank or pending
+      return dt.isValid && dt.hasSame(selectedDate, 'day');
+    })
+    .sort((a, b) => {
+      const t1 = DateTime.fromISO(`${a.date}T${a.timeSlot || '00:00'}`);
+      const t2 = DateTime.fromISO(`${b.date}T${b.timeSlot || '00:00'}`);
+      return t1.toMillis() - t2.toMillis();
+    });
 
   const today = DateTime.now().startOf('day');
   const weekStart = today.startOf('week');
@@ -257,12 +314,6 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Reservations</h1>
           <div className="flex space-x-2">
-            <button
-              onClick={() => window.location.href = `/settings/${restaurantId}`}
-              className="bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600"
-            >
-              Open Settings
-            </button>
             <button onClick={addNewRow} className="bg-gray-200 px-3 py-2 rounded shadow hover:bg-gray-300">
               Add New Row
             </button>
@@ -336,6 +387,80 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
             <input type="date" value={selectedDate.toFormat('yyyy-MM-dd')} onChange={onDateChange} className="p-2 border rounded" />
             <button onClick={goToNextDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
               Next
+            </button>
+          </div>
+        </section>
+
+        <section className="bg-white rounded shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Restaurant Config</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">Max Reservations</label>
+              <input
+                name="maxReservations"
+                type="number"
+                value={String(config.maxReservations ?? '')}
+                onChange={handleConfigChange}
+                className="p-2 border rounded w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">Future Cutoff (days)</label>
+              <input
+                name="futureCutoff"
+                type="number"
+                value={String(config.futureCutoff ?? '')}
+                onChange={handleConfigChange}
+                className="p-2 border rounded w-full"
+              />
+            </div>
+          </div>
+          <div className="mt-4 overflow-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
+                    <th key={day} className="px-3 py-2 text-left text-gray-700 font-medium capitalize">
+                      {day}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="hover:bg-gray-50">
+                  {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
+                    <td key={day + 'Open'} className="px-3 py-2 border-t">
+                      <input
+                        type="text"
+                        placeholder="HH:mm or HH:mm AM/PM"
+                        name={`${day}Open`}
+                        value={config[`${day}Open`] || ''}
+                        onChange={handleConfigChange}
+                        className="w-full p-1 border rounded"
+                      />
+                    </td>
+                  ))}
+                </tr>
+                <tr className="hover:bg-gray-50">
+                  {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
+                    <td key={day + 'Close'} className="px-3 py-2 border-t">
+                      <input
+                        type="text"
+                        placeholder="HH:mm or HH:mm AM/PM"
+                        name={`${day}Close`}
+                        value={config[`${day}Close`] || ''}
+                        onChange={handleConfigChange}
+                        className="w-full p-1 border rounded"
+                      />
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-end">
+            <button onClick={updateConfig} className="mt-4 bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600">
+              Update Config
             </button>
           </div>
         </section>
