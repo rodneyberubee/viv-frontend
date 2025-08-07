@@ -1,4 +1,3 @@
-Here’s my code, make your suggested edits maintaining the integrity of the rest of the code, give me the full script back:
 import React, { useEffect, useState } from 'react';
 import { DateTime } from 'luxon';
 
@@ -136,40 +135,15 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     }
   }, [jwtToken, selectedDate]);
 
-    // Listen for BroadcastChannel + poll refreshFlag
-    useEffect(() => {
-      const bc = new BroadcastChannel('reservations');
-      bc.onmessage = (e) => {
-        if (e.data.type === 'reservationUpdate') {
-          fetchReservations();
-        }
-      };
-
-      let interval: any;
-      if (jwtToken) {
-        interval = setInterval(async () => {
-          try {
-            const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/refreshFlag`, {
-              headers: { Authorization: `Bearer ${jwtToken}` },
-            });
-            const data = await res.json();
-            if (data.refresh === 1) {
-              console.log('[DEBUG] Refresh flag triggered, reloading data');
-              fetchConfig();
-              fetchReservations();
-            }
-          } catch (err) {
-            console.error('[ERROR] Refresh flag check failed:', err);
-          }
-        }, 5000); // check every 5 seconds
+  useEffect(() => {
+    const bc = new BroadcastChannel('reservations');
+    bc.onmessage = (e) => {
+      if (e.data.type === 'reservationUpdate') {
+        fetchReservations();
       }
-
-    return () => {
-      bc.close();
-      if (interval) clearInterval(interval);
     };
-  }, [jwtToken, restaurantId]);
-
+    return () => bc.close();
+  }, [jwtToken]);
 
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -198,13 +172,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
       body: JSON.stringify([{ recordId: null, updatedFields: newRow }]),
     });
 
-    // Notify other tabs to refresh
-    const bc = new BroadcastChannel('reservations');
-    bc.postMessage({ type: 'reservationUpdate' });
-    bc.close();
-
     fetchReservations(); // refresh to show new row
-
   } catch (err) {
     console.error('[ERROR] Adding new row failed:', err);
   }
