@@ -205,7 +205,7 @@ const AccountCreation = () => {
               <h3 className="text-lg font-semibold">Operating Hours</h3>
               <div className="relative group">
                 <span className="text-sm text-gray-400 cursor-help border border-gray-300 rounded-full w-5 h-5 flex items-center justify-center hover:bg-gray-100">?</span>
-                <div className="absolute -top-20 left-1/2 transform -translate-x-1/2 w-64 text-xs bg-gray-700 text-white p-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
+                <div className="absolute top-full mt-1 left-1/2 transform -translate-x-1/2 w-64 text-xs bg-gray-700 text-white p-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
                   If your restaurant closes at midnight, enter <strong>23:59</strong> or <strong>11:59PM</strong> to avoid overlap.
                 </div>
               </div>
