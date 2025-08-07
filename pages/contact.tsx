@@ -1,7 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 
 const ContactPage = () => {
+  const [formData, setFormData] = useState({ name: '', email: '', message: '' });
+  const [status, setStatus] = useState('');
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus('Sending...');
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (res.ok) {
+        setStatus('Message sent!');
+        setFormData({ name: '', email: '', message: '' });
+      } else {
+        setStatus('Failed to send. Try again later.');
+      }
+    } catch (err) {
+      console.error(err);
+      setStatus('Something went wrong.');
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       {/* Header */}
@@ -28,29 +57,41 @@ const ContactPage = () => {
             Have questions about VivAI Table? We’d love to hear from you. Fill out the form below and we’ll get back to you.
           </p>
 
-          <form className="mt-10 bg-gray-50 p-8 rounded shadow space-y-6">
+          <form onSubmit={handleSubmit} className="mt-10 bg-gray-50 p-8 rounded shadow space-y-6">
             <div>
               <label className="block text-gray-700 font-medium mb-1">Name</label>
               <input
                 type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
                 className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
                 placeholder="Your full name"
+                required
               />
             </div>
             <div>
               <label className="block text-gray-700 font-medium mb-1">Email</label>
               <input
                 type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
                 className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
                 placeholder="you@example.com"
+                required
               />
             </div>
             <div>
               <label className="block text-gray-700 font-medium mb-1">Message</label>
               <textarea
+                name="message"
+                value={formData.message}
+                onChange={handleChange}
                 className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
                 rows={5}
                 placeholder="How can we help you?"
+                required
               ></textarea>
             </div>
             <button
@@ -59,6 +100,7 @@ const ContactPage = () => {
             >
               Send Message
             </button>
+            {status && <p className="text-center mt-4 text-gray-700">{status}</p>}
           </form>
         </div>
       </section>
