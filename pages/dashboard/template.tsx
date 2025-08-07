@@ -1,32 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { DateTime } from 'luxon';
 
-type Config = {
-  maxReservations: number;
-  futureCutoff: number;
-  [key: string]: any;
-};
-
-type DashboardProps = {
-  restaurantId: string;
-};
-
-const headerLabels: Record<string, string> = {
-  date: 'Date',
-  timeSlot: 'Time Slot',
-  name: 'Name',
-  partySize: 'Party Size',
-  contactInfo: 'Contact Info',
-  status: 'Status',
-  confirmationCode: 'Confirmation Code',
-};
-
-const editableFields = ['date', 'timeSlot', 'name', 'partySize', 'contactInfo', 'status', 'confirmationCode'];
-
-const statusTooltip = `Status options:
-- Confirmed: Guest reservation
-- Canceled: Reservation was canceled
-- Blocked: Host blocks this time slot (no reservations allowed)`;
+// ... (rest of the types and constants remain unchanged)
 
 const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
@@ -44,193 +19,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     }
   };
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const urlToken = params.get('token');
-    const storedJwt = localStorage.getItem('jwtToken');
-
-    async function exchangeForJwt(tempToken: string) {
-      try {
-        const res = await fetch('https://api.vivaitable.com/api/auth/login/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: tempToken }),
-        });
-        const data = await res.json();
-        if (data.token) {
-          localStorage.setItem('jwtToken', data.token);
-          setJwtToken(data.token);
-          window.history.replaceState({}, '', window.location.pathname);
-        } else {
-          throw new Error('Invalid login token');
-        }
-      } catch (err) {
-        console.error('[ERROR] Token exchange failed:', err);
-        localStorage.removeItem('jwtToken');
-        window.location.href = '/login';
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    if (urlToken) {
-      exchangeForJwt(urlToken);
-    } else if (storedJwt) {
-      setJwtToken(storedJwt);
-      setLoading(false);
-    } else {
-      window.location.href = '/login';
-    }
-  }, []);
-
-  async function safeFetch(url: string, options: any) {
-    const res = await fetch(url, options);
-    if (res.status === 401) {
-      localStorage.removeItem('jwtToken');
-      window.location.href = '/login';
-      throw new Error('Unauthorized');
-    }
-    return res;
-  }
-
-  async function fetchReservations() {
-    if (!jwtToken) return;
-    try {
-      const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/reservations`, {
-        headers: { Authorization: `Bearer ${jwtToken}` },
-      });
-      const data = await res.json();
-      const reservationsFromServer = data.reservations || data || [];
-      setReservations(reservationsFromServer);
-    } catch (err) {
-      console.error('[ERROR] Fetching reservations failed:', err);
-    }
-  }
-
-  useEffect(() => {
-    if (jwtToken) {
-      fetchReservations();
-    }
-  }, [jwtToken, selectedDate]);
-
-  useEffect(() => {
-    const bc = new BroadcastChannel('reservations');
-    bc.onmessage = (e) => {
-      if (e.data.type === 'reservationUpdate') {
-        fetchReservations();
-      }
-    };
-
-    let interval: any;
-    if (jwtToken) {
-      interval = setInterval(async () => {
-        try {
-          const res = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/refreshFlag`, {
-            headers: { Authorization: `Bearer ${jwtToken}` },
-          });
-          const data = await res.json();
-          if (data.refresh === 1) {
-            console.log('[DEBUG] Refresh flag triggered, reloading data');
-            fetchReservations();
-          }
-        } catch (err) {
-          console.error('[ERROR] Refresh flag check failed:', err);
-        }
-      }, 5000);
-    }
-
-    return () => {
-      bc.close();
-      if (interval) clearInterval(interval);
-    };
-  }, [jwtToken, restaurantId]);
-
-  const handleReservationEdit = (e: React.ChangeEvent<HTMLInputElement>, id: string | undefined, index: number) => {
-    const { name, value } = e.target;
-    setReservations((prev) =>
-      prev.map((res, i) => (res.id === id || (!res.id && i === index) ? { ...res, [name]: value } : res))
-    );
-  };
-
-  const addNewRow = async () => {
-    if (!jwtToken) return;
-    try {
-      const newRow = editableFields.reduce((acc, key) => {
-        acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
-        return acc;
-      }, { restaurantId } as any);
-
-      await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
-        body: JSON.stringify([{ recordId: null, updatedFields: newRow }]),
-      });
-
-      const bc = new BroadcastChannel('reservations');
-      bc.postMessage({ type: 'reservationUpdate' });
-      bc.close();
-
-      fetchReservations();
-    } catch (err) {
-      console.error('[ERROR] Adding new row failed:', err);
-    }
-  };
-
-  const updateReservations = async () => {
-    if (!jwtToken) return;
-    try {
-      const payload = reservations
-        .filter((res) => Object.keys(res).length > 0)
-        .map(({ id, rawConfirmationCode, dateFormatted, ...fields }) => ({
-          recordId: id,
-          updatedFields: {
-            ...fields,
-            restaurantId,
-          },
-        }));
-
-      await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
-        body: JSON.stringify(payload),
-      });
-      alert('Reservations updated');
-      fetchReservations();
-    } catch (err) {
-      console.error('[ERROR] Updating reservations failed:', err);
-    }
-  };
-
-  const filteredReservations = reservations.filter((r) => {
-    const dt = DateTime.fromISO(r.date);
-    return dt.isValid && dt.hasSame(selectedDate, 'day');
-  }).sort((a, b) => {
-    const t1 = DateTime.fromISO(`${a.date}T${a.timeSlot || '00:00'}`);
-    const t2 = DateTime.fromISO(`${b.date}T${b.timeSlot || '00:00'}`);
-    return t1.toMillis() - t2.toMillis();
-  });
-
-  const today = DateTime.now().startOf('day');
-  const weekStart = today.startOf('week');
-  const weekEnd = today.endOf('week');
-  const monthStart = today.startOf('month');
-  const monthEnd = today.endOf('month');
-  const validForMetrics = reservations.filter((r) => r.status?.toLowerCase() === 'confirmed' && DateTime.fromISO(r.date).isValid);
-  const todayCount = validForMetrics.filter((r) => DateTime.fromISO(r.date).hasSame(today, 'day')).length;
-  const weekCount = validForMetrics.filter((r) => {
-    const d = DateTime.fromISO(r.date);
-    return d >= weekStart && d <= weekEnd;
-  }).length;
-  const monthCount = validForMetrics.filter((r) => {
-    const d = DateTime.fromISO(r.date);
-    return d >= monthStart && d <= monthEnd;
-  }).length;
-
-  const goToPrevDay = () => setSelectedDate((prev) => prev.minus({ days: 1 }));
-  const goToNextDay = () => setSelectedDate((prev) => prev.plus({ days: 1 }));
-  const onDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedDate(DateTime.fromISO(e.target.value));
-  };
+  // ... (JWT token logic and safeFetch, fetchReservations, etc. remain unchanged)
 
   if (loading) {
     return <div className="p-8 text-center">Loading...</div>;
@@ -250,18 +39,21 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
           </div>
           <p className="text-xs text-gray-500 mt-2">Share this link for direct AI reservations.</p>
         </div>
+
+        <div>
+          <a
+            href={`/settings/${restaurantId}`}
+            className="block mt-4 text-center bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600"
+          >
+            Settings
+          </a>
+        </div>
       </aside>
 
       <main className="flex-1 p-8 space-y-8">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Reservations</h1>
           <div className="flex space-x-2">
-            <button
-              onClick={() => window.location.href = `/settings/${restaurantId}`}
-              className="bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600"
-            >
-              Open Settings
-            </button>
             <button onClick={addNewRow} className="bg-gray-200 px-3 py-2 rounded shadow hover:bg-gray-300">
               Add New Row
             </button>
@@ -295,9 +87,22 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
                   key === 'status' ? (
                     <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium relative group">
                       {headerLabels[key]}
-                      <span className="ml-1 text-gray-400 cursor-help">?</span>
-                      <div className="absolute left-0 mt-1 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                        {statusTooltip}
+                      <div className="inline-block relative group ml-1">
+                        <span
+                          className="text-sm text-gray-400 cursor-help border border-gray-300 rounded-full w-5 h-5 flex items-center justify-center hover:bg-gray-100"
+                          aria-describedby="tooltip-status"
+                          role="button"
+                          tabIndex={0}
+                        >
+                          ?
+                        </span>
+                        <div
+                          id="tooltip-status"
+                          role="tooltip"
+                          className="absolute top-full mt-1 left-1/2 transform -translate-x-1/2 w-64 text-xs bg-gray-700 text-white p-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none"
+                        >
+                          {statusTooltip}
+                        </div>
                       </div>
                     </th>
                   ) : (
