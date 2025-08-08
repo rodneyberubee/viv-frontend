@@ -1,8 +1,8 @@
 import React from 'react';
 import { useRouter } from 'next/router';
-import Template from './template'; // ✅ Correct relative path inside the same folder
+import Template from './template'; // ✅ correct path
 
-const SettingsDynamic = () => {
+const HowToDashboardDynamic = () => {
   const router = useRouter();
   const { restaurantId } = router.query;
 
@@ -10,8 +10,7 @@ const SettingsDynamic = () => {
     return <div className="p-8 text-center">Loading...</div>;
   }
 
-  // Cast restaurantId to string so TS accepts it
-  return <Template restaurantId={restaurantId as string} />;
+  return <Template restaurantId={restaurantId} />;
 };
 
-export default SettingsDynamic;
+export default HowToDashboardDynamic;
