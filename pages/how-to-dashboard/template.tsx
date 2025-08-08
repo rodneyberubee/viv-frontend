@@ -36,23 +36,23 @@ const HowToDashboard = () => {
           </div>
           <p className="text-xs text-gray-500 mt-2">Share this link for direct AI reservations.</p>
         </div>
-        {restaurantId && (
-          <>
-            <a
-              href={`/dashboard/${restaurantId}`}
-              className="block text-orange-600 hover:underline text-sm mt-4"
-            >
-              Reservations
-            </a>
-            <a
-              href={`/settings/${restaurantId}`}
-              className="block text-orange-600 hover:underline text-sm"
-            >
-              Settings
-            </a>
-          </>
-        )}
+
+        <>
+          <a
+            href={`/dashboard/${restaurantId || ''}`}
+            className="block text-orange-600 hover:underline text-sm mt-4"
+          >
+            Reservations
+          </a>
+          <a
+            href={`/settings/${restaurantId || ''}`}
+            className="block text-orange-600 hover:underline text-sm"
+          >
+            Settings
+          </a>
+        </>
       </aside>
+
       <main className="flex-1 p-8">
         <div className="max-w-4xl mx-auto bg-white shadow-md rounded p-6 space-y-6">
           <h1 className="text-3xl font-bold text-gray-800">Using the Viv Dashboard</h1>
@@ -113,12 +113,12 @@ const HowToDashboard = () => {
             <h2 className="text-xl font-semibold text-gray-700 mb-2">Need to Make Changes to Settings?</h2>
             <p className="text-gray-700">
               If you need to change your hours, cutoff window, or maximum reservations per slot, you can do that on the{' '}
-              <a href={`/settings/${restaurantId}`} className="text-orange-600 hover:underline font-medium">Settings</a> page.
+              <a href={`/settings/${restaurantId || ''}`} className="text-orange-600 hover:underline font-medium">Settings</a> page.
             </p>
           </section>
 
           <div className="pt-6 border-t">
-            <a href={`/dashboard/${restaurantId}`} className="text-sm text-blue-600 hover:underline">
+            <a href={`/dashboard/${restaurantId || ''}`} className="text-sm text-blue-600 hover:underline">
               ← Back to Dashboard
             </a>
           </div>
