@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
+import React from 'react';
 
-const HowToDashboard = () => {
-  const router = useRouter();
-  const { restaurantId } = router.query;
+type TemplateProps = {
+  restaurantId: string;
+};
 
+const Template: React.FC<TemplateProps> = ({ restaurantId }) => {
   const shareLink = restaurantId ? `https://vivaitable.com/${restaurantId}` : '';
 
   return (
@@ -128,4 +128,4 @@ const HowToDashboard = () => {
   );
 };
 
-export default HowToDashboard;
+export default Template;
