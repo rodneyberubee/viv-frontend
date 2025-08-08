@@ -54,6 +54,7 @@ const HowToDashboard = () => {
         )}
       </aside>
 
+
       <main className="flex-1 p-8">
         <div className="max-w-4xl mx-auto bg-white shadow-md rounded p-6 space-y-6">
           <h1 className="text-3xl font-bold text-gray-800">Using the Viv Dashboard</h1>
