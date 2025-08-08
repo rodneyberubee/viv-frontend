@@ -21,7 +21,14 @@ const HowToDashboard = () => {
               className="w-full p-2 border rounded bg-gray-100 text-sm"
             />
             <button
-              onClick={() => navigator.clipboard.writeText(shareLink)}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(shareLink);
+                  alert('Link copied to clipboard!');
+                } catch (err) {
+                  console.error('Failed to copy text: ', err);
+                }
+              }}
               className="bg-orange-500 text-white px-3 py-2 rounded hover:bg-orange-600"
             >
               Copy
