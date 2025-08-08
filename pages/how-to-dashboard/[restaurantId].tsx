@@ -10,7 +10,8 @@ const SettingsDynamic = () => {
     return <div className="p-8 text-center">Loading...</div>;
   }
 
-  return <Template restaurantId={restaurantId} />;
+  // Cast restaurantId to string so TS accepts it
+  return <Template restaurantId={restaurantId as string} />;
 };
 
 export default SettingsDynamic;
