@@ -12,6 +12,9 @@ const usTimeZones = [
   'Pacific/Honolulu',
 ];
 
+// Switch: set NEXT_PUBLIC_PAYMENT_MODE to "test" or "live"
+const PAYMENT_MODE = process.env.NEXT_PUBLIC_PAYMENT_MODE || 'live';
+
 const parseTimeInput = (input: string): string | null => {
   if (!input) return '';
   const cleaned = input.trim().toUpperCase().replace(/\./g, '').replace(/\s+/g, '');
@@ -60,25 +63,25 @@ const AccountCreation = () => {
     }
 
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    const parsedForm = { ...form };
+    const parsedForm: typeof form = { ...form };
     for (const day of days) {
-      const openKey = `${day}Open`;
-      const closeKey = `${day}Close`;
+      const openKey = `${day}Open` as keyof typeof form;
+      const closeKey = `${day}Close` as keyof typeof form;
       if (parsedForm[openKey]) {
-        const parsed = parseTimeInput(parsedForm[openKey]);
+        const parsed = parseTimeInput(String(parsedForm[openKey]));
         if (!parsed) {
-          alert(`Invalid time format for ${day} open: ${parsedForm[openKey]}`);
+          alert(`Invalid time format for ${day} open: ${String(parsedForm[openKey])}`);
           return;
         }
-        parsedForm[openKey] = parsed;
+        (parsedForm as any)[openKey] = parsed;
       }
       if (parsedForm[closeKey]) {
-        const parsed = parseTimeInput(parsedForm[closeKey]);
+        const parsed = parseTimeInput(String(parsedForm[closeKey]));
         if (!parsed) {
-          alert(`Invalid time format for ${day} close: ${parsedForm[closeKey]}`);
+          alert(`Invalid time format for ${day} close: ${String(parsedForm[closeKey])}`);
           return;
         }
-        parsedForm[closeKey] = parsed;
+        (parsedForm as any)[closeKey] = parsed;
       }
     }
 
@@ -91,7 +94,7 @@ const AccountCreation = () => {
       });
 
       if (!res.ok) {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         alert(`Error: ${err.error || 'Failed to create account'}`);
         return;
       }
@@ -105,8 +108,18 @@ const AccountCreation = () => {
       const stripeRes = await fetch('https://api.vivaitable.com/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ restaurantId, email }),
+        body: JSON.stringify({
+          restaurantId,
+          email,
+          mode: PAYMENT_MODE, // <-- test or live from env
+        }),
       });
+
+      if (!stripeRes.ok) {
+        const err = await stripeRes.json().catch(() => ({}));
+        alert(`Stripe error: ${err.details || err.error || 'Failed to start payment'}`);
+        return;
+      }
 
       const { url } = await stripeRes.json();
       if (url) {
@@ -116,6 +129,7 @@ const AccountCreation = () => {
       }
     } catch (err) {
       console.error('[ERROR] Account creation/checkout failed:', err);
+      alert('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -227,7 +241,7 @@ const AccountCreation = () => {
                       <input
                         type="text"
                         name={`${day}Open`}
-                        value={form[`${day}Open`] || ''}
+                        value={(form as any)[`${day}Open`] || ''}
                         onChange={handleChange}
                         placeholder="e.g., 10am"
                         className="w-full p-1 border rounded"
@@ -241,7 +255,7 @@ const AccountCreation = () => {
                       <input
                         type="text"
                         name={`${day}Close`}
-                        value={form[`${day}Close`] || ''}
+                        value={(form as any)[`${day}Close`] || ''}
                         onChange={handleChange}
                         placeholder="e.g., 10pm"
                         className="w-full p-1 border rounded"
