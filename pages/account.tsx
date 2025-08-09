@@ -99,8 +99,13 @@ const AccountCreation = () => {
         return;
       }
 
-      const { restaurantId, email } = await res.json();
-      if (!restaurantId || !email) {
+      // ⬇️ Expect backend to return BOTH: restaurantRecordId (rec...) and restaurantId (legacy field)
+      const { restaurantRecordId, restaurantId, email } = await res.json();
+
+      // Prefer recordId; keep legacy for backward‑compat logs/webhooks
+      const joinId = restaurantRecordId || restaurantId;
+
+      if (!joinId || !email) {
         alert('Account created but missing required data for checkout.');
         return;
       }
@@ -109,9 +114,10 @@ const AccountCreation = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          restaurantId,
+          restaurantRecordId: joinId, // ✅ send rec... to backend (canonical)
+          restaurantId,               // optional legacy
           email,
-          mode: PAYMENT_MODE, // <-- test or live from env
+          mode: PAYMENT_MODE,         // test or live from env
         }),
       });
 
