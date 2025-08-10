@@ -74,11 +74,17 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
   return (
     <div className="flex flex-col h-screen bg-gray-50 font-sans">
       {/* Chat container */}
-      <div className="relative flex-1 overflow-y-auto p-4 space-y-4 pb-24">
-        {/* Shadow hint: shows only before first message, positioned near the input */}
+      <div className="relative flex-1 overflow-y-auto p-4 space-y-4 pb-28 sm:pb-24">
+        {/* Shadow hint: only before first message, kept in-frame on mobile */}
         {messages.length === 0 && !isLoading && (
-          <div className="absolute left-0 right-0 bottom-10 flex justify-center pointer-events-none">
-            <p className="text-center text-gray-400 text-sm leading-relaxed select-none px-6">
+          <div
+            className="absolute left-0 right-0 flex justify-center pointer-events-none"
+            style={{
+              // sit just above the input bar, respecting iOS safe area
+              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 4.75rem)'
+            }}
+          >
+            <p className="text-center text-gray-400 text-xs sm:text-sm leading-relaxed select-none px-4">
               <span className="font-medium">Format</span>: Date “<span className="font-medium">10 Aug</span>” or “<span className="font-medium">Aug 10</span>”
               &nbsp;•&nbsp; Time “<span className="font-medium">6:30 PM</span>” or “<span className="font-medium">18:30</span>”
             </p>
