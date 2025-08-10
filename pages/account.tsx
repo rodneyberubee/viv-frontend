@@ -290,7 +290,6 @@ const AccountCreation = () => {
           <p>© {new Date().getFullYear()} VivAI Table. All rights reserved.</p>
           <div className="space-x-4">
             <Link href="/terms">Terms</Link>
-            <Link href="/privacy">Privacy</Link>
           </div>
         </div>
       </footer>
