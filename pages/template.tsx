@@ -81,7 +81,7 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
             className="absolute left-0 right-0 flex justify-center pointer-events-none"
             style={{
               // sit just above the input bar, respecting iOS safe area
-              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 4.75rem)'
+              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.25rem)'
             }}
           >
             <p className="text-center text-gray-400 text-xs sm:text-sm leading-relaxed select-none px-4">
