@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import { RefreshCw, Send, Zap, Sparkles, Bot, Clock3, Users2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -164,12 +163,7 @@ const DemoShowcasePage: React.FC = () => {
 
   const hero = (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-fuchsia-600 via-pink-600 to-orange-500 text-white p-8 shadow-xl">
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="space-y-3"
-      >
+      <div$1>
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5" />
           <span className="text-sm/5 tracking-wide uppercase">Live Demo • No Login</span>
@@ -191,15 +185,10 @@ const DemoShowcasePage: React.FC = () => {
             <Users2 className="h-4 w-4" /> Party‑size logic
           </div>
         </div>
-      </motion.div>
-      <motion.div
-        initial={{ scale: 0.96, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.1 }}
-        className="pointer-events-none absolute -right-6 -top-6 opacity-30"
-      >
+      </div>
+      <div$1>
         <Zap className="h-24 w-24" />
-      </motion.div>
+      </div>
     </div>
   );
 
