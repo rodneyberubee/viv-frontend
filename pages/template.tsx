@@ -74,7 +74,17 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
   return (
     <div className="flex flex-col h-screen bg-gray-50 font-sans">
       {/* Chat container */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+      <div className="relative flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+        {/* Shadow hint: shows only before first message */}
+        {messages.length === 0 && !isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <p className="text-center text-gray-400 text-sm leading-relaxed select-none px-6">
+              <span className="font-medium">Format</span>: Date “<span className="font-medium">10 Aug</span>” or “<span className="font-medium">Aug 10</span>”
+              &nbsp;•&nbsp; Time “<span className="font-medium">6:30 PM</span>” or “<span className="font-medium">18:30</span>”
+            </p>
+          </div>
+        )}
+
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex w-full ${msg.role === 'assistant' ? 'justify-start' : 'justify-end'}`}>
             <div
@@ -113,7 +123,7 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type a message..."
+          placeholder="e.g., 10 Aug at 6:30 PM"
           className="flex-1 border rounded-full px-4 py-2 focus:outline-none text-[16px]"
         />
         <button
