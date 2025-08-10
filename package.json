@@ -15,7 +15,8 @@
     "react": "latest",
     "react-dom": "latest",
     "jwt-decode": "^4.0.0",
-    "resend": "^4.6.0"
+    "resend": "^4.6.0",
+    "lucide-react": "^0.539.0"
   },
   "devDependencies": {
     "@types/node": "24.0.10",
