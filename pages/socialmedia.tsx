@@ -25,10 +25,22 @@ export default function SocialMediaPage() {
     }
   };
 
+  // Initial fetch + polling
   useEffect(() => {
     fetchReservations();
     const poll = setInterval(fetchReservations, 10000);
     return () => clearInterval(poll);
+  }, []);
+
+  // Listen for broadcasted reservation updates
+  useEffect(() => {
+    const bc = new BroadcastChannel("reservations");
+    bc.onmessage = (e) => {
+      if (e.data.type === "reservationUpdate") {
+        fetchReservations();
+      }
+    };
+    return () => bc.close();
   }, []);
 
   useEffect(() => {
@@ -41,23 +53,48 @@ export default function SocialMediaPage() {
     setTranscript((t) => [...t, { role: "user", text: msg }]);
     setChatInput("");
     setSubmitting(true);
+
     try {
+      // Use real payload shape
       const payload = {
-        userMessage: {
-          messages: [{ role: "user", content: msg }],
-        },
+        messages: [{ role: "user", content: msg }],
       };
+
       const res = await fetch(`${API_BASE}/api/askViv/${RESTAURANT_ID}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      setTranscript((t) => [
-        ...t,
-        { role: "assistant", text: data.message || JSON.stringify(data) },
-      ]);
-      fetchReservations();
+
+      // Trigger speech output
+      try {
+        const speakRes = await fetch(`/api/speakViv`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        const speakData = await speakRes.json();
+        const spokenResponse = speakData.spokenResponse;
+        setTranscript((t) => [
+          ...t,
+          { role: "assistant", text: spokenResponse || data.message || JSON.stringify(data) },
+        ]);
+      } catch (speechErr) {
+        console.error("[Demo] speakViv error:", speechErr);
+        setTranscript((t) => [
+          ...t,
+          { role: "assistant", text: data.message || JSON.stringify(data) },
+        ]);
+      }
+
+      // Refresh table if it's a booking/cancel/change
+      if (data.type && data.type.startsWith("reservation.")) {
+        fetchReservations();
+        const bc = new BroadcastChannel("reservations");
+        bc.postMessage({ type: "reservationUpdate", timestamp: Date.now() });
+        bc.close();
+      }
     } catch (err) {
       console.error(err);
       setTranscript((t) => [
