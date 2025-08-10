@@ -77,7 +77,7 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
       <div className="relative flex-1 overflow-y-auto p-4 space-y-4 pb-24">
         {/* Shadow hint: shows only before first message, positioned near the input */}
         {messages.length === 0 && !isLoading && (
-          <div className="absolute left-0 right-0 bottom-24 flex justify-center pointer-events-none">
+          <div className="absolute left-0 right-0 bottom-10 flex justify-center pointer-events-none">
             <p className="text-center text-gray-400 text-sm leading-relaxed select-none px-6">
               <span className="font-medium">Format</span>: Date “<span className="font-medium">10 Aug</span>” or “<span className="font-medium">Aug 10</span>”
               &nbsp;•&nbsp; Time “<span className="font-medium">6:30 PM</span>” or “<span className="font-medium">18:30</span>”
