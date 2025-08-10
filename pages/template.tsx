@@ -107,9 +107,9 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
         {isLoading && (
           <div className="flex w-full justify-start">
             <div className="bg-white rounded-2xl px-3 py-2 shadow animate-fadeIn flex space-x-1">
-              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+              <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
+              <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
+              <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
             </div>
           </div>
         )}
@@ -123,7 +123,7 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="e.g., 10 Aug at 6:30 PM"
+          placeholder="Type a message..."
           className="flex-1 border rounded-full px-4 py-2 focus:outline-none text-[16px]"
         />
         <button
