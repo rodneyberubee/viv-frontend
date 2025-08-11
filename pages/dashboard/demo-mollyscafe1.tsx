@@ -39,7 +39,8 @@ const DashboardTemplate = () => {
 
   async function fetchReservations() {
     try {
-      const res = await fetch(`${demoBase}/reservations`, { cache: 'no-store' });
+      // ⬇️ Add cache-buster to guarantee a fresh payload
+      const res = await fetch(`${demoBase}/reservations?t=${Date.now()}`, { cache: 'no-store' });
       if (!res.ok) {
         const txt = await res.text();
         throw new Error(`HTTP ${res.status} ${txt}`);
@@ -82,13 +83,22 @@ const DashboardTemplate = () => {
         return acc;
       }, { restaurantId } as any);
 
-      await fetch(`${demoBase}/updateReservation`, {
+      const res = await fetch(`${demoBase}/updateReservation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify([{ recordId: null, updatedFields: newRow }]),
       });
 
-      fetchReservations();
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`HTTP ${res.status} ${txt}`);
+      }
+
+      // Re-fetch and notify other tabs (same pattern prod uses)
+      await fetchReservations();
+      const bc = new BroadcastChannel('reservations');
+      bc.postMessage({ type: 'reservationUpdate' });
+      bc.close();
     } catch (err) {
       console.error('[ERROR] Adding new row failed:', err);
     }
@@ -106,13 +116,23 @@ const DashboardTemplate = () => {
           },
         }));
 
-      await fetch(`${demoBase}/updateReservation`, {
+      const res = await fetch(`${demoBase}/updateReservation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`HTTP ${res.status} ${txt}`);
+      }
+
       alert('Reservations updated');
-      fetchReservations();
+      // Re-fetch and notify other tabs (same pattern prod uses)
+      await fetchReservations();
+      const bc = new BroadcastChannel('reservations');
+      bc.postMessage({ type: 'reservationUpdate' });
+      bc.close();
     } catch (err) {
       console.error('[ERROR] Updating reservations failed:', err);
     }
