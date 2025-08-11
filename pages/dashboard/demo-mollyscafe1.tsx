@@ -57,6 +57,41 @@ const DashboardTemplate = () => {
     fetchReservations();
   }, [selectedDate]); // restaurantId is static
 
+  // 🔁 Match prod-style refresh: poll server refreshFlag every 5s and on tab focus
+  useEffect(() => {
+    let intervalId: number | null = null;
+
+    const poll = async () => {
+      try {
+        const r = await fetch(`${demoBase}/refreshFlag?t=${Date.now()}`, { cache: 'no-store' });
+        if (!r.ok) return;
+        const { refresh } = await r.json();
+        if (refresh === 1) {
+          await fetchReservations();
+        }
+      } catch (err) {
+        console.error('[ERROR] refreshFlag poll failed:', err);
+      }
+    };
+
+    // fire once immediately, then every 5s
+    poll();
+    intervalId = window.setInterval(poll, 5000);
+
+    // also check when tab regains focus
+    const onVis = () => {
+      if (document.visibilityState === 'visible') {
+        poll();
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+
+    return () => {
+      if (intervalId) window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, []); // restaurantId is static
+
   // Keep broadcast updates (same behavior as prod; optional)
   useEffect(() => {
     const bc = new BroadcastChannel('reservations');
