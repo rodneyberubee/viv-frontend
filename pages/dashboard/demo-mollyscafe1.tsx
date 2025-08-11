@@ -2,10 +2,6 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { DateTime } from 'luxon';
 
-type DashboardProps = {
-  restaurantId: string;
-};
-
 const headerLabels: Record<string, string> = {
   date: 'Date',
   timeSlot: 'Time Slot',
@@ -18,7 +14,11 @@ const headerLabels: Record<string, string> = {
 
 const editableFields = ['date', 'timeSlot', 'name', 'partySize', 'contactInfo', 'status', 'confirmationCode'];
 
-const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
+const DashboardTemplate = () => {
+  // 🔒 Hardcoded for public demo
+  const restaurantId = 'mollyscafe1';
+  const demoBase = `https://api.vivaitable.com/api/demo-dashboard/${restaurantId}`;
+
   // 🔓 Removed all JWT state/logic
   const [loading, setLoading] = useState(true);
   const [reservations, setReservations] = useState<any[]>([]);
@@ -42,9 +42,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   // 🔓 No safeFetch; use plain fetch with no Authorization header
   async function fetchReservations() {
     try {
-      const res = await fetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/reservations`, {
-        // No auth headers for public demo
-      });
+      const res = await fetch(`${demoBase}/reservations`);
       const data = await res.json();
       const reservationsFromServer = data.reservations || data || [];
       setReservations(reservationsFromServer);
@@ -55,7 +53,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
 
   useEffect(() => {
     fetchReservations();
-  }, [selectedDate, restaurantId]);
+  }, [selectedDate]); // restaurantId is static
 
   // Keep broadcast updates, no token required
   useEffect(() => {
@@ -66,7 +64,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
       }
     };
     return () => bc.close();
-  }, [restaurantId]);
+  }, []); // restaurantId is static
 
   const handleReservationEdit = (e: React.ChangeEvent<HTMLInputElement>, id: string | undefined, index: number) => {
     const { name, value } = e.target;
@@ -75,7 +73,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     );
   };
 
-  // 🔓 Public calls (no Authorization header). These will work if your backend allows mollyscafe1 to update without auth.
+  // 🔓 Public calls (no Authorization header). Backend demo router must allow mollyscafe1 to update without auth.
   const addNewRow = async () => {
     try {
       const newRow = editableFields.reduce((acc, key) => {
@@ -83,7 +81,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         return acc;
       }, { restaurantId } as any);
 
-      await fetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
+      await fetch(`${demoBase}/updateReservation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify([{ recordId: null, updatedFields: newRow }]),
@@ -107,7 +105,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
           },
         }));
 
-      await fetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
+      await fetch(`${demoBase}/updateReservation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
