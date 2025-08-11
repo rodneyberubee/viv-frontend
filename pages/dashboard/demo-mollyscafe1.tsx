@@ -19,7 +19,6 @@ const DashboardTemplate = () => {
   const restaurantId = 'mollyscafe1';
   const demoBase = `https://api.vivaitable.com/api/demo-dashboard/${restaurantId}`;
 
-  // 🔓 Removed all JWT state/logic
   const [loading, setLoading] = useState(true);
   const [reservations, setReservations] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<DateTime>(DateTime.now().startOf('day'));
@@ -34,12 +33,10 @@ const DashboardTemplate = () => {
     }
   };
 
-  // 🔓 Removed token exchange + redirects entirely
   useEffect(() => {
     setLoading(false);
   }, []);
 
-  // 🔓 No safeFetch; use plain fetch with no Authorization header
   async function fetchReservations() {
     try {
       const res = await fetch(`${demoBase}/reservations`, { cache: 'no-store' });
@@ -59,40 +56,7 @@ const DashboardTemplate = () => {
     fetchReservations();
   }, [selectedDate]); // restaurantId is static
 
-  // 🔁 Server-driven refreshFlag poll (mirrors prod behavior)
-  useEffect(() => {
-    let intervalId: number | null = null;
-
-    const poll = async () => {
-      try {
-        const r = await fetch(`${demoBase}/refreshFlag`, { cache: 'no-store' });
-        if (!r.ok) return;
-        const { refresh } = await r.json();
-        if (refresh === 1) {
-          await fetchReservations();
-        }
-      } catch (err) {
-        console.error('[ERROR] refreshFlag poll failed:', err);
-      }
-    };
-
-    // Start immediately, then poll every 3s
-    poll();
-    intervalId = window.setInterval(poll, 3000);
-
-    // Refresh on tab focus to feel snappier
-    const onVis = () => {
-      if (document.visibilityState === 'visible') poll();
-    };
-    document.addEventListener('visibilitychange', onVis);
-
-    return () => {
-      if (intervalId) window.clearInterval(intervalId);
-      document.removeEventListener('visibilitychange', onVis);
-    };
-  }, []); // restaurantId is static
-
-  // Keep broadcast updates, no token required
+  // Keep broadcast updates (same behavior as prod; optional)
   useEffect(() => {
     const bc = new BroadcastChannel('reservations');
     bc.onmessage = (e) => {
@@ -110,13 +74,13 @@ const DashboardTemplate = () => {
     );
   };
 
-  // 🔓 Public calls (no Authorization header). Demo backend reads restaurantId from URL; don't send it in body.
+  // Demo backend reads restaurantId from URL, but we include it in body to match prod payload shape.
   const addNewRow = async () => {
     try {
       const newRow = editableFields.reduce((acc, key) => {
         acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
         return acc;
-      }, {} as any);
+      }, { restaurantId } as any);
 
       await fetch(`${demoBase}/updateReservation`, {
         method: 'POST',
@@ -137,7 +101,8 @@ const DashboardTemplate = () => {
         .map(({ id, rawConfirmationCode, dateFormatted, ...fields }) => ({
           recordId: id,
           updatedFields: {
-            ...fields, // ⚠️ no restaurantId here — demo router uses URL param
+            ...fields,
+            restaurantId,
           },
         }));
 
@@ -215,6 +180,7 @@ const DashboardTemplate = () => {
         </Link>
       </aside>
 
+
       <main className="flex-1 p-8 space-y-8">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Reservations</h1>
@@ -248,11 +214,17 @@ const DashboardTemplate = () => {
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                {editableFields.map((key) => (
-                  <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
-                    {headerLabels[key] || key}
-                  </th>
-                ))}
+                {editableFields.map((key) =>
+                  key === 'status' ? (
+                    <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
+                      {headerLabels[key]}
+                    </th>
+                  ) : (
+                    <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
+                      {headerLabels[key] || key}
+                    </th>
+                  )
+                )}
               </tr>
             </thead>
             <tbody>
