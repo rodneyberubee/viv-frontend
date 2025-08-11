@@ -42,7 +42,11 @@ const DashboardTemplate = () => {
   // 🔓 No safeFetch; use plain fetch with no Authorization header
   async function fetchReservations() {
     try {
-      const res = await fetch(`${demoBase}/reservations`);
+      const res = await fetch(`${demoBase}/reservations`, { cache: 'no-store' });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`HTTP ${res.status} ${txt}`);
+      }
       const data = await res.json();
       const reservationsFromServer = data.reservations || data || [];
       setReservations(reservationsFromServer);
@@ -54,6 +58,39 @@ const DashboardTemplate = () => {
   useEffect(() => {
     fetchReservations();
   }, [selectedDate]); // restaurantId is static
+
+  // 🔁 Server-driven refreshFlag poll (mirrors prod behavior)
+  useEffect(() => {
+    let intervalId: number | null = null;
+
+    const poll = async () => {
+      try {
+        const r = await fetch(`${demoBase}/refreshFlag`, { cache: 'no-store' });
+        if (!r.ok) return;
+        const { refresh } = await r.json();
+        if (refresh === 1) {
+          await fetchReservations();
+        }
+      } catch (err) {
+        console.error('[ERROR] refreshFlag poll failed:', err);
+      }
+    };
+
+    // Start immediately, then poll every 3s
+    poll();
+    intervalId = window.setInterval(poll, 3000);
+
+    // Refresh on tab focus to feel snappier
+    const onVis = () => {
+      if (document.visibilityState === 'visible') poll();
+    };
+    document.addEventListener('visibilitychange', onVis);
+
+    return () => {
+      if (intervalId) window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, []); // restaurantId is static
 
   // Keep broadcast updates, no token required
   useEffect(() => {
@@ -73,13 +110,13 @@ const DashboardTemplate = () => {
     );
   };
 
-  // 🔓 Public calls (no Authorization header). Backend demo router must allow mollyscafe1 to update without auth.
+  // 🔓 Public calls (no Authorization header). Demo backend reads restaurantId from URL; don't send it in body.
   const addNewRow = async () => {
     try {
       const newRow = editableFields.reduce((acc, key) => {
         acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
         return acc;
-      }, { restaurantId } as any);
+      }, {} as any);
 
       await fetch(`${demoBase}/updateReservation`, {
         method: 'POST',
@@ -100,8 +137,7 @@ const DashboardTemplate = () => {
         .map(({ id, rawConfirmationCode, dateFormatted, ...fields }) => ({
           recordId: id,
           updatedFields: {
-            ...fields,
-            restaurantId,
+            ...fields, // ⚠️ no restaurantId here — demo router uses URL param
           },
         }));
 
