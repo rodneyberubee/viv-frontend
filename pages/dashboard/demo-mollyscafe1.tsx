@@ -57,7 +57,7 @@ const DashboardTemplate = () => {
     fetchReservations();
   }, [selectedDate]); // restaurantId is static
 
-  // 🔁 Match prod-style refresh: poll server refreshFlag every 5s and on tab focus
+  // 🔁 Mirror prod: poll server-side refresh flag every 5s and on tab focus
   useEffect(() => {
     let intervalId: number | null = null;
 
@@ -74,15 +74,13 @@ const DashboardTemplate = () => {
       }
     };
 
-    // fire once immediately, then every 5s
+    // Kick off immediately
     poll();
     intervalId = window.setInterval(poll, 5000);
 
-    // also check when tab regains focus
+    // Also check on tab focus
     const onVis = () => {
-      if (document.visibilityState === 'visible') {
-        poll();
-      }
+      if (document.visibilityState === 'visible') poll();
     };
     document.addEventListener('visibilitychange', onVis);
 
@@ -234,7 +232,6 @@ const DashboardTemplate = () => {
           How the Dashboard Works
         </Link>
       </aside>
-
 
       <main className="flex-1 p-8 space-y-8">
         <div className="flex justify-between items-center">
