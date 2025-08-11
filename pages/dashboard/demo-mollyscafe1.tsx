@@ -23,6 +23,9 @@ const DashboardTemplate = () => {
   const [reservations, setReservations] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<DateTime>(DateTime.now().startOf('day'));
 
+  // 🚦 Track unsaved edits so auto-refresh won’t clobber user typing
+  const [isDirty, setIsDirty] = useState(false);
+
   const aiLink = `https://vivaitable.com/${restaurantId}`;
   const copyToClipboard = async () => {
     try {
@@ -48,6 +51,7 @@ const DashboardTemplate = () => {
       const data = await res.json();
       const reservationsFromServer = data.reservations || data || [];
       setReservations(reservationsFromServer);
+      // note: do NOT clear isDirty here; only clear after a save/add completes
     } catch (err) {
       console.error('[ERROR] Fetching reservations failed:', err);
     }
@@ -90,6 +94,17 @@ const DashboardTemplate = () => {
     };
   }, []); // restaurantId is static
 
+  // ⏱️ Auto-refresh every 10s (skips if user is editing or tab hidden)
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === 'visible' && !isDirty) {
+        fetchReservations();
+      }
+    };
+    const id = window.setInterval(tick, 10000);
+    return () => window.clearInterval(id);
+  }, [isDirty]); // re-evaluate when edit state changes
+
   // Keep broadcast updates (same behavior as prod; optional)
   useEffect(() => {
     const bc = new BroadcastChannel('reservations');
@@ -106,6 +121,7 @@ const DashboardTemplate = () => {
     setReservations((prev) =>
       prev.map((res, i) => (res.id === id || (!res.id && i === index) ? { ...res, [name]: value } : res))
     );
+    setIsDirty(true); // mark form as having unsaved edits
   };
 
   // Demo backend reads restaurantId from URL, but we include it in body to match prod payload shape.
@@ -132,6 +148,7 @@ const DashboardTemplate = () => {
       const bc = new BroadcastChannel('reservations');
       bc.postMessage({ type: 'reservationUpdate' });
       bc.close();
+      setIsDirty(false); // add completed; UI synced with server
     } catch (err) {
       console.error('[ERROR] Adding new row failed:', err);
     }
@@ -166,6 +183,7 @@ const DashboardTemplate = () => {
       const bc = new BroadcastChannel('reservations');
       bc.postMessage({ type: 'reservationUpdate' });
       bc.close();
+      setIsDirty(false); // save completed; UI synced with server
     } catch (err) {
       console.error('[ERROR] Updating reservations failed:', err);
     }
