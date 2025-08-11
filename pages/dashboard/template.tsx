@@ -103,6 +103,44 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     }
   }, [jwtToken, selectedDate]);
 
+  // 🔁 Refresh-flag polling (matches working prod behavior)
+  useEffect(() => {
+    if (!jwtToken) return;
+    let id: number | null = null;
+
+    const poll = async () => {
+      try {
+        const r = await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/refreshFlag`, {
+          headers: { Authorization: `Bearer ${jwtToken}` },
+        });
+        if (!r.ok) return;
+        const { refresh } = await r.json();
+        if (refresh === 1) {
+          await fetchReservations();
+        }
+      } catch (err) {
+        console.error('[ERROR] refreshFlag poll failed:', err);
+      }
+    };
+
+    // poll immediately, then every 5s; pause when tab hidden
+    const tick = () => {
+      if (document.visibilityState === 'visible') poll();
+    };
+    tick();
+    id = window.setInterval(tick, 5000);
+
+    const onVis = () => {
+      if (document.visibilityState === 'visible') poll();
+    };
+    document.addEventListener('visibilitychange', onVis);
+
+    return () => {
+      if (id) window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [jwtToken, restaurantId]);
+
   useEffect(() => {
     const bc = new BroadcastChannel('reservations');
     bc.onmessage = (e) => {
