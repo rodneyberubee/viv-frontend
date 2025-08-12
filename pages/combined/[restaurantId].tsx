@@ -10,15 +10,15 @@ const SplitDemoPage: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full">
+      {/* keep the main page header */}
       <div className="w-full px-4 py-3 border-b bg-white flex items-center justify-between">
         <div className="text-lg font-semibold">Viv — mollyscafe1</div>
         <div className="text-sm text-gray-600">AI · Demo Dashboard</div>
       </div>
 
       <div className="grid grid-cols-2 gap-0">
-        {/* Left: Viva */}
+        {/* Left: Viv AI */}
         <div className="min-w-0 border-r">
-          <div className="px-3 py-1 text-xs text-gray-600 bg-gray-50 border-b">AI: {aiSrc}</div>
           <iframe
             src={aiSrc}
             title="Viv AI"
@@ -31,7 +31,6 @@ const SplitDemoPage: React.FC = () => {
 
         {/* Right: Dashboard */}
         <div className="min-w-0">
-          <div className="px-3 py-1 text-xs text-gray-600 bg-gray-50 border-b">Dashboard: {dashboardSrc}</div>
           <iframe
             src={dashboardSrc}
             title="Viv Demo Dashboard"
