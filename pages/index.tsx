@@ -76,7 +76,7 @@ const IndexPage = () => {
             <div className="bg-gray-50 border rounded-lg shadow-lg p-8 w-full max-w-md">
               <h4 className="text-2xl font-semibold text-gray-900">Standard Plan</h4>
               <p className="mt-4 text-4xl font-bold text-orange-500">
-                $100 <span className="text-lg text-gray-600">/mo</span>
+                $99.99 <span className="text-lg text-gray-600">/mo</span>
               </p>
               <ul className="mt-6 space-y-2 text-gray-700">
                 <li>✓ Unlimited reservations</li>
