@@ -10,7 +10,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ params }) 
 };
 
 const SplitIframesPage: NextPage<Props> = ({ restaurantId }) => {
-  const aiSrc = `/${restaurantId}`;                // pages/[restaurantId].tsx
+  const aiSrc = `/mollyscafe1`;                
   const dashboardSrc = `/dashboard/demo-mollyscafe1`; // pages/dashboard/demo-mollyscafe1.tsx
 
   return (
