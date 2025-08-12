@@ -15,6 +15,7 @@ const SettingsPage = ({ restaurantId }: SettingsProps) => {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState<Config>({ maxReservations: 0, futureCutoff: 0 });
+  const [billingLoading, setBillingLoading] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -109,12 +110,36 @@ const SettingsPage = ({ restaurantId }: SettingsProps) => {
     }
   };
 
+  const openBillingPortal = async () => {
+    if (!restaurantId) return;
+    setBillingLoading(true);
+    try {
+      const res = await safeFetch(`https://api.vivaitable.com/api/billing/${restaurantId}/portal`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {}),
+        },
+        body: JSON.stringify({}), // no body needed if stripeCustomerId is in Airtable config
+      });
+      const data = await res.json();
+      if (!data?.url) throw new Error(data?.error || 'Failed to create billing portal session');
+      window.location.href = data.url;
+    } catch (err: any) {
+      console.error('[ERROR] Opening billing portal failed:', err);
+      alert(`Unable to open billing portal. ${err?.message || ''}`);
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
   if (loading) return <div className="p-8 text-center">Loading...</div>;
 
   return (
     <div className="flex min-h-screen bg-gray-100">
       <aside className="w-64 bg-white shadow-md p-6 space-y-6">
         <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+
         <div>
           <p className="text-sm text-gray-600 mb-2">Your Viv AI Link</p>
           <div className="flex space-x-2">
@@ -133,22 +158,34 @@ const SettingsPage = ({ restaurantId }: SettingsProps) => {
           </div>
           <p className="text-xs text-gray-500 mt-2">Share this link for direct AI reservations.</p>
         </div>
+
         <a
           href={`/dashboard/${restaurantId}`}
           className="block text-orange-600 hover:underline text-sm mt-4"
         >
           Reservations
         </a>
+
         <a
           href="/dashboard/how-to-dashboard"
           className="block text-orange-600 hover:underline text-sm"
         >
           How the Dashboard Works
         </a>
+
+        <button
+          onClick={openBillingPortal}
+          disabled={billingLoading}
+          className="w-full mt-2 border rounded px-3 py-2 text-sm hover:shadow-sm disabled:opacity-60"
+          title="Open Stripe Customer Portal"
+        >
+          {billingLoading ? 'Opening Billing…' : 'Manage Billing'}
+        </button>
       </aside>
 
       <main className="flex-1 p-8 space-y-8">
         <h1 className="text-3xl font-bold">Restaurant Settings</h1>
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-gray-700 font-medium mb-1">Max Reservations</label>
@@ -171,6 +208,7 @@ const SettingsPage = ({ restaurantId }: SettingsProps) => {
             />
           </div>
         </div>
+
         <div className="overflow-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
@@ -214,6 +252,7 @@ const SettingsPage = ({ restaurantId }: SettingsProps) => {
             </tbody>
           </table>
         </div>
+
         <div className="flex justify-end">
           <button
             onClick={updateConfig}
