@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { DateTime } from 'luxon';
 
 const headerLabels: Record<string, string> = {
@@ -25,16 +24,6 @@ const DashboardTemplate = () => {
 
   // 🚦 Track unsaved edits so auto-refresh won’t clobber user typing
   const [isDirty, setIsDirty] = useState(false);
-
-  const aiLink = `https://vivaitable.com/${restaurantId}`;
-  const copyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(aiLink);
-      alert('Link copied to clipboard!');
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-    }
-  };
 
   useEffect(() => {
     setLoading(false);
@@ -227,107 +216,75 @@ const DashboardTemplate = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <aside className="w-64 bg-white shadow-md p-6 space-y-6">
-        <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-        <div>
-          <p className="text-sm text-gray-600 mb-2">Your Viv AI Link</p>
-          <div className="flex space-x-2">
-            <input type="text" value={aiLink} readOnly className="w-full p-2 border rounded bg-gray-100 text-sm" />
-            <button onClick={copyToClipboard} className="bg-orange-500 text-white px-3 py-2 rounded hover:bg-orange-600">
-              Copy
-            </button>
-          </div>
-          <p className="text-xs text-gray-500 mt-2">Share this link for direct AI reservations.</p>
-        </div>
-        <Link
-          href={`/settings/${restaurantId}`}
-          className="block text-orange-600 hover:underline text-sm mt-4"
-        >
-          Settings
-        </Link>
-        <Link href={`/how-to-dashboard/${restaurantId}`} className="block text-orange-600 hover:underline text-sm">
-          How the Dashboard Works
-        </Link>
-      </aside>
+    <div className="min-h-screen bg-gray-100 p-8 space-y-8">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Reservations</h1>
+        {/* Top-right buttons removed per request */}
+      </div>
 
-      <main className="flex-1 p-8 space-y-8">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Reservations</h1>
-          <div className="flex space-x-2">
-            <button onClick={addNewRow} className="bg-gray-200 px-3 py-2 rounded shadow hover:bg-gray-300">
-              Add New Row
-            </button>
-            <button onClick={updateReservations} className="bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600">
-              Update Reservations
-            </button>
-          </div>
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white rounded shadow p-4 text-center">
+          <p className="text-2xl font-bold">{todayCount}</p>
+          <p className="text-gray-600">Today</p>
         </div>
-
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white rounded shadow p-4 text-center">
-            <p className="text-2xl font-bold">{todayCount}</p>
-            <p className="text-gray-600">Today</p>
-          </div>
-          <div className="bg-white rounded shadow p-4 text-center">
-            <p className="text-2xl font-bold">{weekCount}</p>
-            <p className="text-gray-600">This Week</p>
-          </div>
-          <div className="bg-white rounded shadow p-4 text-center">
-            <p className="text-2xl font-bold">{monthCount}</p>
-            <p className="text-gray-600">This Month</p>
-          </div>
+        <div className="bg-white rounded shadow p-4 text-center">
+          <p className="text-2xl font-bold">{weekCount}</p>
+          <p className="text-gray-600">This Week</p>
         </div>
+        <div className="bg-white rounded shadow p-4 text-center">
+          <p className="text-2xl font-bold">{monthCount}</p>
+          <p className="text-gray-600">This Month</p>
+        </div>
+      </div>
 
-        <section className="bg-white rounded shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Reservations for {selectedDate.toFormat('MMMM dd, yyyy')}</h2>
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                {editableFields.map((key) =>
-                  key === 'status' ? (
-                    <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
-                      {headerLabels[key]}
-                    </th>
-                  ) : (
-                    <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
-                      {headerLabels[key] || key}
-                    </th>
-                  )
-                )}
+      <section className="bg-white rounded shadow p-6">
+        <h2 className="text-xl font-semibold mb-4">Reservations for {selectedDate.toFormat('MMMM dd, yyyy')}</h2>
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              {editableFields.map((key) =>
+                key === 'status' ? (
+                  <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
+                    {headerLabels[key]}
+                  </th>
+                ) : (
+                  <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
+                    {headerLabels[key] || key}
+                  </th>
+                )
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {filteredReservations.map((res, i) => (
+              <tr key={res.id || i} className="border-t hover:bg-gray-50">
+                {editableFields.map((key) => (
+                  <td key={key} className="px-3 py-2">
+                    <input
+                      type={key === 'timeSlot' ? 'text' : key === 'date' ? 'date' : 'text'}
+                      placeholder={key === 'timeSlot' ? 'HH:mm or HH:mm AM/PM' : ''}
+                      name={key}
+                      value={String(res[key] ?? '')}
+                      onChange={(e) => handleReservationEdit(e, res.id, i)}
+                      className="w-full p-1 rounded border border-transparent focus:border-orange-500 focus:ring focus:ring-orange-200"
+                    />
+                  </td>
+                ))}
               </tr>
-            </thead>
-            <tbody>
-              {filteredReservations.map((res, i) => (
-                <tr key={res.id || i} className="border-t hover:bg-gray-50">
-                  {editableFields.map((key) => (
-                    <td key={key} className="px-3 py-2">
-                      <input
-                        type={key === 'timeSlot' ? 'text' : key === 'date' ? 'date' : 'text'}
-                        placeholder={key === 'timeSlot' ? 'HH:mm or HH:mm AM/PM' : ''}
-                        name={key}
-                        value={String(res[key] ?? '')}
-                        onChange={(e) => handleReservationEdit(e, res.id, i)}
-                        className="w-full p-1 rounded border border-transparent focus:border-orange-500 focus:ring focus:ring-orange-200"
-                      />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            ))}
+          </tbody>
+        </table>
 
-          <div className="flex items-center justify-center space-x-4 mt-4">
-            <button onClick={goToPrevDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
-              Prev
-            </button>
-            <input type="date" value={selectedDate.toFormat('yyyy-MM-dd')} onChange={onDateChange} className="p-2 border rounded" />
-            <button onClick={goToNextDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
-              Next
-            </button>
-          </div>
-        </section>
-      </main>
+        <div className="flex items-center justify-center space-x-4 mt-4">
+          <button onClick={goToPrevDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
+            Prev
+          </button>
+          <input type="date" value={selectedDate.toFormat('yyyy-MM-dd')} onChange={onDateChange} className="p-2 border rounded" />
+          <button onClick={goToNextDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
+            Next
+          </button>
+        </div>
+      </section>
     </div>
   );
 };
