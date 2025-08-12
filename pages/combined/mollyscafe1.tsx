@@ -1,31 +1,22 @@
+// pages/split-demo.tsx
 import React from 'react';
-import type { GetServerSideProps, NextPage } from 'next';
 
-type Props = { restaurantId: string };
+const headerPx = 56; // adjust if you change the header height
+const frameHeight = `calc(100vh - ${headerPx}px)`;
 
-export const getServerSideProps: GetServerSideProps<Props> = async ({ params }) => {
-  const restaurantId = (params?.restaurantId as string) ?? '';
-  // Optionally validate restaurantId here
-  return { props: { restaurantId } };
-};
-
-const SplitIframesPage: NextPage<Props> = ({ restaurantId }) => {
-  const aiSrc = `/mollyscafe1`;                       // AI page
-  const dashboardSrc = `/dashboard/demo-mollyscafe1`; // Demo dashboard
-
-  // Header height used below; adjust if you change the header size.
-  const headerPx = 56; // ~14px padding + text line-height ~ fits your current header
-  const frameHeight = `calc(100vh - ${headerPx}px)`;
+const SplitDemoPage: React.FC = () => {
+  const aiSrc = `/mollyscafe1`;
+  const dashboardSrc = `/dashboard/demo-mollyscafe1`;
 
   return (
     <div className="min-h-screen w-full">
       <div className="w-full px-4 py-3 border-b bg-white flex items-center justify-between">
-        <div className="text-lg font-semibold">Viv — {restaurantId}</div>
+        <div className="text-lg font-semibold">Viv — mollyscafe1</div>
         <div className="text-sm text-gray-600">AI · Demo Dashboard</div>
       </div>
 
       <div className="grid grid-cols-2 gap-0">
-        {/* Left: Viv AI */}
+        {/* Left: Viva */}
         <div className="min-w-0 border-r">
           <div className="px-3 py-1 text-xs text-gray-600 bg-gray-50 border-b">AI: {aiSrc}</div>
           <iframe
@@ -54,4 +45,4 @@ const SplitIframesPage: NextPage<Props> = ({ restaurantId }) => {
   );
 };
 
-export default SplitIframesPage;
+export default SplitDemoPage;
