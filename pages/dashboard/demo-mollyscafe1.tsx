@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { DateTime } from 'luxon';
 
 const headerLabels: Record<string, string> = {
@@ -219,7 +220,18 @@ const DashboardTemplate = () => {
     <div className="min-h-screen bg-gray-100 p-8 space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Reservations</h1>
-        {/* Top-right buttons removed per request */}
+        <div className="flex items-center gap-3">
+          <Link href="/" target="_top" className="text-sm text-gray-700 hover:underline">
+            Home
+          </Link>
+          <Link
+            href="/create-account"
+            target="_top"
+            className="bg-orange-500 text-white text-sm px-3 py-2 rounded hover:bg-orange-600"
+          >
+            Create Account
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
