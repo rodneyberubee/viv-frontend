@@ -8,11 +8,23 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
   const [isLoading, setIsLoading] = useState(false);
   const [lastAction, setLastAction] = useState<any>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const hasGreetedRef = useRef(false);
 
   const broadcast = new BroadcastChannel('reservations');
 
+  const GREETING =
+    "Hi, I’m Viva — let’s get you booked. For now, please include an explicit date and time (e.g., Aug 10 at 6:30 PM).";
+
   const scrollToBottom = () => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   useEffect(scrollToBottom, [messages, isLoading]);
+
+  // Inject an initial assistant greeting once per mount/restaurant
+  useEffect(() => {
+    if (restaurantId && !hasGreetedRef.current && messages.length === 0) {
+      hasGreetedRef.current = true;
+      setMessages([{ role: 'assistant', content: GREETING }]);
+    }
+  }, [restaurantId, messages.length]);
 
   const sendMessage = async () => {
     if (!input.trim() || !restaurantId) return;
@@ -75,7 +87,7 @@ export default function VivAChatTemplate({ restaurantId }: { restaurantId?: stri
     <div className="flex flex-col h-screen bg-gray-50 font-sans">
       {/* Chat container */}
       <div className="relative flex-1 overflow-y-auto p-4 space-y-4 pb-28 sm:pb-24">
-        {/* Greeting hint: only before first message, kept in-frame on mobile */}
+        {/* Shadow hint shows only before any message is rendered (hidden after greeting injects) */}
         {messages.length === 0 && !isLoading && (
           <div
             className="absolute left-0 right-0 flex justify-center pointer-events-none"
