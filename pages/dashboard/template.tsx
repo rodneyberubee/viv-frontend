@@ -6,17 +6,43 @@ type DashboardProps = {
   restaurantId: string;
 };
 
+// Labels for visible columns
 const headerLabels: Record<string, string> = {
-  date: 'Date',
-  timeSlot: 'Time Slot',
   name: 'Name',
+  date: 'Date',
+  timeSlot: 'Time',
   partySize: 'Party Size',
-  contactInfo: 'Contact Info',
+  phone: 'Phone',
+  checkInAt: 'Check-In (txt)',
+  tableSat: 'Table Sat (txt)',
   status: 'Status',
-  confirmationCode: 'Confirmation Code',
+  hostNotes: 'Host Notes',
+  _info: 'Info'
 };
 
-const editableFields = ['date', 'timeSlot', 'name', 'partySize', 'contactInfo', 'status', 'confirmationCode'];
+// Columns the host actively edits (clean surface)
+const visibleEditableFields = [
+  'name',
+  'date',
+  'timeSlot',
+  'partySize',
+  'phone',
+  'checkInAt', // text by design
+  'tableSat',  // text by design
+  'status',
+  'hostNotes'
+] as const;
+
+// Fields we don’t show in the grid, but surface in the hover “Info” card
+const extraInfoFieldsOrder = [
+  'contactInfo',       // or email blob
+  'conatactInfo',      // tolerate typo, if present
+  'confirmationCode',
+  'rawConfirmationCode',
+  'dateFormatted',
+  'restaurantId',
+  'notes'
+];
 
 const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
@@ -103,7 +129,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     }
   }, [jwtToken, selectedDate]);
 
-  // 🔁 Refresh-flag polling (matches working prod behavior)
+  // 🔁 Refresh-flag polling
   useEffect(() => {
     if (!jwtToken) return;
     let id: number | null = null;
@@ -123,7 +149,6 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
       }
     };
 
-    // poll immediately, then every 5s; pause when tab hidden
     const tick = () => {
       if (document.visibilityState === 'visible') poll();
     };
@@ -151,7 +176,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     return () => bc.close();
   }, [jwtToken]);
 
-  const handleReservationEdit = (e: React.ChangeEvent<HTMLInputElement>, id: string | undefined, index: number) => {
+  const handleReservationEdit = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, id: string | undefined, index: number) => {
     const { name, value } = e.target;
     setReservations((prev) =>
       prev.map((res, i) => (res.id === id || (!res.id && i === index) ? { ...res, [name]: value } : res))
@@ -161,15 +186,17 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   const addNewRow = async () => {
     if (!jwtToken) return;
     try {
-      const newRow = editableFields.reduce((acc, key) => {
-        acc[key] = key === 'date' ? selectedDate.toFormat('yyyy-MM-dd') : '';
-        return acc;
-      }, { restaurantId } as any);
+      const baseRow: Record<string, any> = { restaurantId };
+      // Pre-fill date with the selected day; keep everything else empty for full manual control
+      visibleEditableFields.forEach((key) => {
+        if (key === 'date') baseRow[key] = selectedDate.toFormat('yyyy-MM-dd');
+        else baseRow[key] = '';
+      });
 
       await safeFetch(`https://api.vivaitable.com/api/dashboard/${restaurantId}/updateReservation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
-        body: JSON.stringify([{ recordId: null, updatedFields: newRow }]),
+        body: JSON.stringify([{ recordId: null, updatedFields: baseRow }]),
       });
 
       fetchReservations();
@@ -178,7 +205,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     }
   };
 
-  const updateReservations = async () => {
+  const updateReservationsReq = async () => {
     if (!jwtToken) return;
     try {
       const payload = reservations
@@ -236,6 +263,28 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     setSelectedDate(DateTime.fromISO(e.target.value));
   };
 
+  // Small helper for Info hover card — show only present extra fields
+  const renderExtraInfo = (res: any) => {
+    const items = extraInfoFieldsOrder
+      .filter((k) => res[k] !== undefined && res[k] !== null && String(res[k]).trim() !== '')
+      .map((k) => {
+        // collapse contactInfo typo
+        const label = k === 'conatactInfo' ? 'contactInfo (typo)' : k;
+        const val = k === 'conatactInfo' ? res.conatactInfo : res[k];
+        return (
+          <div key={k} className="flex justify-between gap-3 text-xs py-0.5">
+            <span className="text-gray-500">{label}</span>
+            <span className="font-medium break-all">{String(val)}</span>
+          </div>
+        );
+      });
+
+    if (items.length === 0) {
+      return <div className="text-xs text-gray-500">No extra info</div>;
+    }
+    return <div className="space-y-1">{items}</div>;
+  };
+
   if (loading) {
     return <div className="p-8 text-center">Loading...</div>;
   }
@@ -254,17 +303,13 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
           </div>
           <p className="text-xs text-gray-500 mt-2">Share this link for direct AI reservations.</p>
         </div>
-        <Link
-          href={`/settings/${restaurantId}`}
-          className="block text-orange-600 hover:underline text-sm mt-4"
-        >
+        <Link href={`/settings/${restaurantId}`} className="block text-orange-600 hover:underline text-sm mt-4">
           Settings
         </Link>
         <Link href={`/how-to-dashboard/${restaurantId}`} className="block text-orange-600 hover:underline text-sm">
           How the Dashboard Works
         </Link>
       </aside>
-
 
       <main className="flex-1 p-8 space-y-8">
         <div className="flex justify-between items-center">
@@ -273,7 +318,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
             <button onClick={addNewRow} className="bg-gray-200 px-3 py-2 rounded shadow hover:bg-gray-300">
               Add New Row
             </button>
-            <button onClick={updateReservations} className="bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600">
+            <button onClick={updateReservationsReq} className="bg-orange-500 text-white px-4 py-2 rounded shadow hover:bg-orange-600">
               Update Reservations
             </button>
           </div>
@@ -295,48 +340,86 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
         </div>
 
         <section className="bg-white rounded shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Reservations for {selectedDate.toFormat('MMMM dd, yyyy')}</h2>
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                {editableFields.map((key) =>
-                  key === 'status' ? (
-                    <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
-                      {headerLabels[key]}
-                    </th>
-                  ) : (
+          <h2 className="text-xl font-semibold mb-4">
+            Reservations for {selectedDate.toFormat('MMMM dd, yyyy')}
+          </h2>
+
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  {visibleEditableFields.map((key) => (
                     <th key={key} className="px-3 py-2 text-left text-gray-700 font-medium">
                       {headerLabels[key] || key}
                     </th>
-                  )
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredReservations.map((res, i) => (
-                <tr key={res.id || i} className="border-t hover:bg-gray-50">
-                  {editableFields.map((key) => (
-                    <td key={key} className="px-3 py-2">
-                      <input
-                        type={key === 'timeSlot' ? 'text' : key === 'date' ? 'date' : 'text'}
-                        placeholder={key === 'timeSlot' ? 'HH:mm or HH:mm AM/PM' : ''}
-                        name={key}
-                        value={String(res[key] ?? '')}
-                        onChange={(e) => handleReservationEdit(e, res.id, i)}
-                        className="w-full p-1 rounded border border-transparent focus:border-orange-500 focus:ring focus:ring-orange-200"
-                      />
-                    </td>
                   ))}
+                  <th className="px-3 py-2 text-left text-gray-700 font-medium">{headerLabels._info}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredReservations.map((res, i) => (
+                  <tr key={res.id || i} className="border-t hover:bg-gray-50">
+                    {visibleEditableFields.map((key) => (
+                      <td key={key} className="px-3 py-2 align-top">
+                        {key === 'hostNotes' ? (
+                          <textarea
+                            name={key}
+                            value={String(res[key] ?? '')}
+                            onChange={(e) => handleReservationEdit(e, res.id, i)}
+                            className="w-full p-1 rounded border border-transparent focus:border-orange-500 focus:ring focus:ring-orange-200 min-h-[36px]"
+                            placeholder="Allergies, booster, anniversary…"
+                          />
+                        ) : (
+                          <input
+                            type={key === 'date' ? 'date' : 'text'}
+                            placeholder={
+                              key === 'timeSlot'
+                                ? 'e.g., 7:15 pm'
+                                : key === 'checkInAt'
+                                ? 'e.g., 7:20 pm'
+                                : key === 'tableSat'
+                                ? 'e.g., 7:25 pm'
+                                : ''
+                            }
+                            name={key}
+                            value={String(res[key] ?? '')}
+                            onChange={(e) => handleReservationEdit(e, res.id, i)}
+                            className="w-full p-1 rounded border border-transparent focus:border-orange-500 focus:ring focus:ring-orange-200"
+                          />
+                        )}
+                      </td>
+                    ))}
+
+                    {/* Info hover card */}
+                    <td className="px-3 py-2 align-top">
+                      <div className="relative group inline-block">
+                        <button
+                          className="px-2 py-1 rounded border text-gray-700 hover:bg-gray-100"
+                          title="More details"
+                        >
+                          Info
+                        </button>
+                        <div className="absolute left-0 mt-2 hidden group-hover:block z-10 w-80 bg-white border rounded-lg shadow-lg p-3">
+                          {renderExtraInfo(res)}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           <div className="flex items-center justify-center space-x-4 mt-4">
             <button onClick={goToPrevDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
               Prev
             </button>
-            <input type="date" value={selectedDate.toFormat('yyyy-MM-dd')} onChange={onDateChange} className="p-2 border rounded" />
+            <input
+              type="date"
+              value={selectedDate.toFormat('yyyy-MM-dd')}
+              onChange={onDateChange}
+              className="p-2 border rounded"
+            />
             <button onClick={goToNextDay} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
               Next
             </button>
