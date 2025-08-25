@@ -6,7 +6,7 @@ type DashboardProps = {
   restaurantId: string;
 };
 
-// Labels for visible columns
+// Visible column labels
 const headerLabels: Record<string, string> = {
   name: 'Name',
   date: 'Date',
@@ -20,7 +20,7 @@ const headerLabels: Record<string, string> = {
   _info: 'Info'
 };
 
-// Columns the host actively edits (clean surface)
+// Keep the working surface minimal
 const visibleEditableFields = [
   'name',
   'date',
@@ -33,16 +33,35 @@ const visibleEditableFields = [
   'hostNotes'
 ] as const;
 
-// Fields we don’t show in the grid, but surface in the hover “Info” card
+// Stuff we tuck into the hover card
 const extraInfoFieldsOrder = [
-  'contactInfo',       // or email blob
-  'conatactInfo',      // tolerate typo, if present
+  'contactInfo',
+  'conatactInfo', // tolerate typo
   'confirmationCode',
   'rawConfirmationCode',
   'dateFormatted',
   'restaurantId',
   'notes'
 ];
+
+// Try to make sense of loose textual times for sorting only
+function combineDateAndTime(dateStr?: string, timeText?: string) {
+  const base = DateTime.fromISO(String(dateStr || ''));
+  if (!base.isValid) return DateTime.invalid('bad date');
+
+  if (!timeText || !String(timeText).trim()) return base;
+
+  const tt = String(timeText).trim();
+  const formats = ['H:mm', 'HH:mm', 'h:mm a', 'h:mma', 'hha', 'hh:mma', 'h:mmA'];
+  for (const fmt of formats) {
+    const parsed = DateTime.fromFormat(tt, fmt);
+    if (parsed.isValid) {
+      return base.set({ hour: parsed.hour, minute: parsed.minute });
+    }
+  }
+  // Fallback: leave time at 00:00
+  return base;
+}
 
 const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
@@ -176,7 +195,11 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     return () => bc.close();
   }, [jwtToken]);
 
-  const handleReservationEdit = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, id: string | undefined, index: number) => {
+  const handleReservationEdit = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    id: string | undefined,
+    index: number
+  ) => {
     const { name, value } = e.target;
     setReservations((prev) =>
       prev.map((res, i) => (res.id === id || (!res.id && i === index) ? { ...res, [name]: value } : res))
@@ -187,7 +210,7 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     if (!jwtToken) return;
     try {
       const baseRow: Record<string, any> = { restaurantId };
-      // Pre-fill date with the selected day; keep everything else empty for full manual control
+      // Pre-fill date; keep everything else manual
       visibleEditableFields.forEach((key) => {
         if (key === 'date') baseRow[key] = selectedDate.toFormat('yyyy-MM-dd');
         else baseRow[key] = '';
@@ -208,9 +231,10 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   const updateReservationsReq = async () => {
     if (!jwtToken) return;
     try {
+      // Also strip confirmationCode on the client (backend ignores it anyway)
       const payload = reservations
         .filter((res) => Object.keys(res).length > 0)
-        .map(({ id, rawConfirmationCode, dateFormatted, ...fields }) => ({
+        .map(({ id, rawConfirmationCode, dateFormatted, confirmationCode, ...fields }) => ({
           recordId: id,
           updatedFields: {
             ...fields,
@@ -232,12 +256,12 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
 
   const filteredReservations = reservations
     .filter((r) => {
-      const dt = DateTime.fromISO(r.date);
+      const dt = DateTime.fromISO(String(r.date || ''));
       return dt.isValid && dt.hasSame(selectedDate, 'day');
     })
     .sort((a, b) => {
-      const t1 = DateTime.fromISO(`${a.date}T${a.timeSlot || '00:00'}`);
-      const t2 = DateTime.fromISO(`${b.date}T${b.timeSlot || '00:00'}`);
+      const t1 = combineDateAndTime(a.date, a.timeSlot);
+      const t2 = combineDateAndTime(b.date, b.timeSlot);
       return t1.toMillis() - t2.toMillis();
     });
 
@@ -246,7 +270,9 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
   const weekEnd = today.endOf('week');
   const monthStart = today.startOf('month');
   const monthEnd = today.endOf('month');
-  const validForMetrics = reservations.filter((r) => r.status?.toLowerCase() === 'confirmed' && DateTime.fromISO(r.date).isValid);
+  const validForMetrics = reservations.filter(
+    (r) => r.status?.toLowerCase() === 'confirmed' && DateTime.fromISO(String(r.date || '')).isValid
+  );
   const todayCount = validForMetrics.filter((r) => DateTime.fromISO(r.date).hasSame(today, 'day')).length;
   const weekCount = validForMetrics.filter((r) => {
     const d = DateTime.fromISO(r.date);
@@ -263,12 +289,10 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
     setSelectedDate(DateTime.fromISO(e.target.value));
   };
 
-  // Small helper for Info hover card — show only present extra fields
   const renderExtraInfo = (res: any) => {
     const items = extraInfoFieldsOrder
       .filter((k) => res[k] !== undefined && res[k] !== null && String(res[k]).trim() !== '')
       .map((k) => {
-        // collapse contactInfo typo
         const label = k === 'conatactInfo' ? 'contactInfo (typo)' : k;
         const val = k === 'conatactInfo' ? res.conatactInfo : res[k];
         return (
@@ -339,12 +363,13 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
           </div>
         </div>
 
-        <section className="bg-white rounded shadow p-6">
+        <section className="bg-white rounded shadow p-6 relative">
           <h2 className="text-xl font-semibold mb-4">
             Reservations for {selectedDate.toFormat('MMMM dd, yyyy')}
           </h2>
 
-          <div className="w-full overflow-x-auto">
+          {/* overflow-x for table scrolling, but allow popovers to escape */}
+          <div className="w-full overflow-x-auto overflow-y-visible">
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>
@@ -390,16 +415,16 @@ const DashboardTemplate = ({ restaurantId }: DashboardProps) => {
                       </td>
                     ))}
 
-                    {/* Info hover card */}
-                    <td className="px-3 py-2 align-top">
-                      <div className="relative group inline-block">
+                    {/* Info hover card – anchored to the right to avoid clipping */}
+                    <td className="px-3 py-2 align-top relative">
+                      <div className="group inline-block">
                         <button
                           className="px-2 py-1 rounded border text-gray-700 hover:bg-gray-100"
                           title="More details"
                         >
                           Info
                         </button>
-                        <div className="absolute left-0 mt-2 hidden group-hover:block z-10 w-80 bg-white border rounded-lg shadow-lg p-3">
+                        <div className="absolute right-0 top-full mt-2 z-50 hidden group-hover:block w-80 max-w-[80vw] bg-white border rounded-lg shadow-xl p-3">
                           {renderExtraInfo(res)}
                         </div>
                       </div>
